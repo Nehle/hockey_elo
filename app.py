@@ -48,10 +48,6 @@ season_labels = list(available_seasons.keys())
 season_label = st.sidebar.selectbox("Season", season_labels, index=0)
 SEASON_SELECT = available_seasons[season_label]
 
-if st.sidebar.button("Refresh Data Cache"):
-    st.cache_data.clear()
-    st.rerun()
-
 st.sidebar.header("ELO Parameters")
 st.sidebar.slider("Initial ELO", min_value=1000.0, max_value=2000.0, step=50.0, key="initial_elo")
 st.sidebar.slider("K-Factor", min_value=1.0, max_value=100.0, step=1.0, key="k_factor")
