@@ -1,0 +1,40 @@
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Data Artifacts
+*.csv
+*.png
+*_out.txt
+debug_out.txt
+full_out.txt
+sim_out.txt
+
+# Python Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build Artifacts
+build/
+dist/
+*.egg-info/
+
+# Coverage Reports
+htmlcov/
+.coverage
+.coverage.*
+coverage/*
+
+# Editor Artifacts
+.vscode/
+
+# OS Artifacts
+.DS_Store
