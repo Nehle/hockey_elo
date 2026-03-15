@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Tuple
+from datetime import date, datetime
+from typing import List, Dict, Tuple, Optional, Union
 from .models import GameResult
 
 class BaseLeague(ABC):
@@ -36,6 +37,61 @@ class BaseLeague(ABC):
     def simulate_playoffs(self, records: List[dict], ratings: Dict[str, float], simulations: int, rng, **kwargs) -> List[dict]:
         """Runs monte carlo for playoffs"""
         pass
+
+    @staticmethod
+    def _coerce_to_date(value: Union[str, date, datetime]) -> date:
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Unsupported date value: {value!r}")
+
+        raw = value.strip()
+        try:
+            return datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+        except ValueError:
+            pass
+
+        try:
+            return date.fromisoformat(raw[:10])
+        except ValueError as exc:
+            raise ValueError(f"Could not parse game date: {value!r}") from exc
+
+    def sort_games_by_date(self, games: List[GameResult]) -> List[GameResult]:
+        dated_games = []
+        for game in games:
+            dated_games.append((self._coerce_to_date(game.game_date), str(game.game_id), game))
+        dated_games.sort(key=lambda item: (item[0], item[1]))
+        return [game for _, _, game in dated_games]
+
+    def split_games_by_cutoff(
+        self,
+        games: List[GameResult],
+        cutoff_date: Optional[Union[str, date, datetime]],
+    ) -> Tuple[List[GameResult], List[GameResult]]:
+        dated_games = []
+        for game in games:
+            dated_games.append((self._coerce_to_date(game.game_date), str(game.game_id), game))
+        dated_games.sort(key=lambda item: (item[0], item[1]))
+
+        if cutoff_date is None:
+            return [game for _, _, game in dated_games], []
+
+        cutoff = self._coerce_to_date(cutoff_date)
+        on_or_before_cutoff: List[GameResult] = []
+        after_cutoff: List[GameResult] = []
+
+        for game_date, _, game in dated_games:
+            if game_date <= cutoff:
+                on_or_before_cutoff.append(game)
+            else:
+                after_cutoff.append(game)
+
+        return on_or_before_cutoff, after_cutoff
+
+    def sorted_unique_game_dates(self, games: List[GameResult]) -> List[date]:
+        return sorted({self._coerce_to_date(game.game_date) for game in games})
         
     def get_playoff_column_names(self) -> Dict[str, str]:
         """Returns a mapping of internal playoff status keys to league-specific UI column headers.

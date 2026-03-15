@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0] - 2026-03-15
+
+### Added
+
+- Date-cutoff what-if mode in the Streamlit app
+- Sidebar controls to enable cutoff mode and pick an inclusive cutoff date
+- Shared league date helpers for parsing, sorting, and splitting games by cutoff
+- Unit tests for date normalization and inclusive cutoff splitting behavior
+
+### Changed
+
+- Ratings and all analytics tabs now use games up to the selected cutoff date in what-if mode
+- Simulations now seed from cutoff ratings and simulate games after the selected cutoff date in what-if mode
+
+
 ## [0.1.0] - 2026-03-13
 
 ### Added

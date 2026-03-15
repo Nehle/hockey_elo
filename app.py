@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import date
 
 from src.leagues.nhl.league import NHLLeague
 from src.leagues.shl.league import SHLLeague
@@ -29,6 +29,12 @@ if 'use_mov' not in st.session_state:
     st.session_state.use_mov = False
 if 'mov_cap' not in st.session_state:
     st.session_state.mov_cap = 5
+if 'use_date_cutoff' not in st.session_state:
+    st.session_state.use_date_cutoff = False
+if 'elo_cutoff_date' not in st.session_state:
+    st.session_state.elo_cutoff_date = None
+if 'cutoff_scope_key' not in st.session_state:
+    st.session_state.cutoff_scope_key = ""
 
 st.set_page_config(page_title="Hockey ELO Ratings", layout="wide")
 
@@ -70,7 +76,7 @@ def fetch_game_data_v2(season, league_name):
     return completed, remaining, league.get_teams(), league.team_info()
 
 @st.cache_data(ttl=3600)
-def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, initial_elo, use_mov, mov_cap, league_name, season_id):
+def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, initial_elo, use_mov, mov_cap, league_name, season_id, cutoff_date_key):
     win_weights = {
         'REG_WIN': 1.0, 'REG_LOSS': 0.0,
         'OT_WIN': ot_win, 'OT_LOSS': 1.0 - ot_win,
@@ -87,7 +93,7 @@ def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, initia
     return ratings, history, team_history, comparison, records, divisions, interdivision_rows
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win, so_win, use_mov, mov_cap, season_id, league_id):
+def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win, so_win, use_mov, mov_cap, season_id, league_id, cutoff_date_key):
     ww = {
         'REG_WIN': 1.0, 'REG_LOSS': 0.0,
         'OT_WIN': ot_win, 'OT_LOSS': 1.0 - ot_win,
@@ -106,15 +112,72 @@ try:
             league._teams = c_teams
         if hasattr(league, '_team_info'):
             league._team_info = c_team_info
-        ratings, history, team_history, comparison, records, divisions, interdivision_rows = compute_ratings(
-            completed_games, st.session_state.k_factor, st.session_state.home_ice_advantage,
-            st.session_state.ot_win_weight, st.session_state.so_win_weight, st.session_state.initial_elo,
-            st.session_state.use_mov, st.session_state.mov_cap,
-            st.session_state.league_choice, SEASON_SELECT
-        )
 except Exception as e:
     st.error(f"Error loading data: {e}")
     st.stop()
+
+completed_dates = league.sorted_unique_game_dates(completed_games)
+if not completed_dates:
+    st.error("No completed games were returned for the selected season.")
+    st.stop()
+
+cutoff_scope_key = f"{st.session_state.league_choice}:{SEASON_SELECT}"
+latest_completed_date = completed_dates[-1]
+
+if st.session_state.cutoff_scope_key != cutoff_scope_key:
+    st.session_state.cutoff_scope_key = cutoff_scope_key
+    st.session_state.elo_cutoff_date = latest_completed_date
+
+if (
+    st.session_state.elo_cutoff_date is None
+    or not isinstance(st.session_state.elo_cutoff_date, date)
+    or st.session_state.elo_cutoff_date < completed_dates[0]
+    or st.session_state.elo_cutoff_date > latest_completed_date
+):
+    st.session_state.elo_cutoff_date = latest_completed_date
+
+st.sidebar.header("What-If Cutoff")
+st.sidebar.toggle("Enable Date Cutoff", key="use_date_cutoff")
+st.sidebar.date_input(
+    "Calculate ELO Through Date",
+    min_value=completed_dates[0],
+    max_value=latest_completed_date,
+    key="elo_cutoff_date",
+    disabled=not st.session_state.use_date_cutoff,
+)
+
+selected_cutoff_date = st.session_state.elo_cutoff_date if st.session_state.use_date_cutoff else None
+cutoff_date_key = selected_cutoff_date.isoformat() if selected_cutoff_date else "none"
+
+completed_games_for_elo = completed_games
+sim_games_from_cutoff = remaining_games
+
+if selected_cutoff_date is not None:
+    completed_games_for_elo, completed_after_cutoff = league.split_games_by_cutoff(completed_games, selected_cutoff_date)
+    sim_games_from_cutoff = league.sort_games_by_date(completed_after_cutoff + remaining_games)
+    st.sidebar.caption(
+        f"Using games through {cutoff_date_key} for ELO/analytics. Simulations run after that date."
+    )
+
+ratings, history, team_history, comparison, records, divisions, interdivision_rows = compute_ratings(
+    completed_games_for_elo,
+    st.session_state.k_factor,
+    st.session_state.home_ice_advantage,
+    st.session_state.ot_win_weight,
+    st.session_state.so_win_weight,
+    st.session_state.initial_elo,
+    st.session_state.use_mov,
+    st.session_state.mov_cap,
+    st.session_state.league_choice,
+    SEASON_SELECT,
+    cutoff_date_key,
+)
+
+if selected_cutoff_date is not None:
+    st.info(
+        f"What-if mode is active: ratings and analytics include games through {cutoff_date_key}. "
+        f"Simulations use {len(sim_games_from_cutoff)} games after the cutoff."
+    )
 
 
 # Tabs
@@ -208,58 +271,61 @@ with tab4:
         st.info("Simulating the remainder of the season and playoffs takes a few seconds. Lower iteration counts are faster but more volatile.")
         
     if run_btn:
-        with st.spinner(f"Running {st.session_state.num_simulations} simulations..."):
-            results = get_sim_results(
-                completed_games, remaining_games, ratings, st.session_state.num_simulations,
-                st.session_state.k_factor, st.session_state.home_ice_advantage,
-                st.session_state.ot_win_weight, st.session_state.so_win_weight,
-                st.session_state.use_mov, st.session_state.mov_cap,
-                SEASON_SELECT, st.session_state.league_choice
-            )
+        if not sim_games_from_cutoff:
+            st.info("No games remain after the selected cutoff date, so there is nothing to simulate.")
+        else:
+            with st.spinner(f"Running {st.session_state.num_simulations} simulations..."):
+                results = get_sim_results(
+                    completed_games_for_elo, sim_games_from_cutoff, ratings, st.session_state.num_simulations,
+                    st.session_state.k_factor, st.session_state.home_ice_advantage,
+                    st.session_state.ot_win_weight, st.session_state.so_win_weight,
+                    st.session_state.use_mov, st.session_state.mov_cap,
+                    SEASON_SELECT, st.session_state.league_choice, cutoff_date_key
+                )
             
-            df_sim = pd.DataFrame(results)
-            st.write(f"### Simulation Results ({st.session_state.num_simulations} runs)")
+                df_sim = pd.DataFrame(results)
+                st.write(f"### Simulation Results ({st.session_state.num_simulations} runs)")
             
-            playoff_cols_dict = league.get_playoff_column_names()
-            format_dict = {
-                'Cur. ELO': '{:.2f}', 
-                playoff_cols_dict.get('make_playoffs', 'Make Playoffs'): '{:.1%}', 
-                playoff_cols_dict.get('make_qf', 'Round 2'): '{:.1%}', 
-                playoff_cols_dict.get('make_sf', 'Conf Finals'): '{:.1%}', 
-                playoff_cols_dict.get('make_final', 'Finals'): '{:.1%}', 
-                playoff_cols_dict.get('win_champ', 'Champ'): '{:.1%}'
-            }
+                playoff_cols_dict = league.get_playoff_column_names()
+                format_dict = {
+                    'Cur. ELO': '{:.2f}', 
+                    playoff_cols_dict.get('make_playoffs', 'Make Playoffs'): '{:.1%}', 
+                    playoff_cols_dict.get('make_qf', 'Round 2'): '{:.1%}', 
+                    playoff_cols_dict.get('make_sf', 'Conf Finals'): '{:.1%}', 
+                    playoff_cols_dict.get('make_final', 'Finals'): '{:.1%}', 
+                    playoff_cols_dict.get('win_champ', 'Champ'): '{:.1%}'
+                }
             
-            display_cols = [
-                'team', 'conference', 'division', 'current_elo', 
-                'make_playoffs_prob', 'make_qf_prob', 'make_sf_prob', 
-                'make_final_prob', 'win_champ_prob'
-            ]
+                display_cols = [
+                    'team', 'conference', 'division', 'current_elo', 
+                    'make_playoffs_prob', 'make_qf_prob', 'make_sf_prob', 
+                    'make_final_prob', 'win_champ_prob'
+                ]
             
-            rename_cols = {
-                'team': 'Team', 'conference': 'Conf', 'division': 'Div', 'current_elo': 'Cur. ELO',
-                'make_playoffs_prob': playoff_cols_dict.get('make_playoffs', 'Make Playoffs'), 
-                'make_qf_prob': playoff_cols_dict.get('make_qf', 'Round 2'),
-                'make_sf_prob': playoff_cols_dict.get('make_sf', 'Conf Finals'), 
-                'make_final_prob': playoff_cols_dict.get('make_final', 'Finals'), 
-                'win_champ_prob': playoff_cols_dict.get('win_champ', 'Champ')
-            }
+                rename_cols = {
+                    'team': 'Team', 'conference': 'Conf', 'division': 'Div', 'current_elo': 'Cur. ELO',
+                    'make_playoffs_prob': playoff_cols_dict.get('make_playoffs', 'Make Playoffs'), 
+                    'make_qf_prob': playoff_cols_dict.get('make_qf', 'Round 2'),
+                    'make_sf_prob': playoff_cols_dict.get('make_sf', 'Conf Finals'), 
+                    'make_final_prob': playoff_cols_dict.get('make_final', 'Finals'), 
+                    'win_champ_prob': playoff_cols_dict.get('win_champ', 'Champ')
+                }
             
-            df_display = df_sim[display_cols].rename(columns=rename_cols)
-            styled_df = df_display.style.format(format_dict)
+                df_display = df_sim[display_cols].rename(columns=rename_cols)
+                styled_df = df_display.style.format(format_dict)
             
-            st.dataframe(styled_df, width="stretch", hide_index=True)
+                st.dataframe(styled_df, width="stretch", hide_index=True)
             
-            st.write("### Championship Probabilities")
-            fig_sim = px.bar(
-                df_sim.head(16), 
-                x='team', y='win_champ_prob',
-                title=f"Top 16 Championship Probabilities ({st.session_state.num_simulations} Sims)",
-                labels={'win_champ_prob': playoff_cols_dict.get('win_champ', 'Championship Probability'), 'team': 'Team'},
-                color='conference'
-            )
-            fig_sim.update_layout(yaxis_tickformat='.1%')
-            st.plotly_chart(fig_sim, width="stretch")
+                st.write("### Championship Probabilities")
+                fig_sim = px.bar(
+                    df_sim.head(16), 
+                    x='team', y='win_champ_prob',
+                    title=f"Top 16 Championship Probabilities ({st.session_state.num_simulations} Sims)",
+                    labels={'win_champ_prob': playoff_cols_dict.get('win_champ', 'Championship Probability'), 'team': 'Team'},
+                    color='conference'
+                )
+                fig_sim.update_layout(yaxis_tickformat='.1%')
+                st.plotly_chart(fig_sim, width="stretch")
 
 with tab5:
     st.subheader("Interdivision Score Percentage Matrix")
