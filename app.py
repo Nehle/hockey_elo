@@ -131,7 +131,7 @@ with tab1:
         'elo': 'ELO', 'Pts': 'Points', 'OTW': 'OTW'
     }
     
-    st.dataframe(df[display_cols].rename(columns=col_names), use_container_width=True, hide_index=True)
+    st.dataframe(df[display_cols].rename(columns=col_names), width="stretch", hide_index=True)
 
 with tab2:
     st.subheader("ELO Rating History")
@@ -163,7 +163,7 @@ with tab2:
             height=600,
             hovermode="x unified"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 with tab3:
     st.subheader("ELO Rank vs Standings Rank")
@@ -193,7 +193,7 @@ with tab3:
         yaxis=dict(autorange="reversed")
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 with tab4:
     st.subheader("Season & Playoffs Simulations")
@@ -248,7 +248,7 @@ with tab4:
             df_display = df_sim[display_cols].rename(columns=rename_cols)
             styled_df = df_display.style.format(format_dict)
             
-            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+            st.dataframe(styled_df, width="stretch", hide_index=True)
             
             st.write("### Championship Probabilities")
             fig_sim = px.bar(
@@ -259,7 +259,7 @@ with tab4:
                 color='conference'
             )
             fig_sim.update_layout(yaxis_tickformat='.1%')
-            st.plotly_chart(fig_sim, use_container_width=True)
+            st.plotly_chart(fig_sim, width="stretch")
 
 with tab5:
     st.subheader("Interdivision Score Percentage Matrix")
@@ -286,4 +286,4 @@ with tab5:
         title="Interdivision Win/Loss Matrix", height=500,
         xaxis_title="Opponent Division", yaxis_title="Division", coloraxis_colorbar=dict(title="%")
     )
-    st.plotly_chart(fig_heat, use_container_width=True)
+    st.plotly_chart(fig_heat, width="stretch")
