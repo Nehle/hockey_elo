@@ -123,7 +123,27 @@ def estimate_home_ice_advantage(
 
     return best_fine, best_fine_loss
 
-def compare_elo_vs_standings(league: BaseLeague, ratings: Dict[str, float], games: List[GameResult]) -> List[dict]:
+
+def _elo_trend_last_10_games(team_series: List[Tuple[str, float]]) -> float:
+    # Series starts with ("START", initial_elo), then one entry per completed game.
+    if len(team_series) <= 1:
+        return 0.0
+
+    games_played = len(team_series) - 1
+    current_elo = team_series[-1][1]
+    if games_played < 10:
+        baseline_elo = team_series[1][1]
+    else:
+        baseline_elo = team_series[-11][1]
+    return current_elo - baseline_elo
+
+
+def compare_elo_vs_standings(
+    league: BaseLeague,
+    ratings: Dict[str, float],
+    games: List[GameResult],
+    team_history: Dict[str, List[Tuple[str, float]]] | None = None,
+) -> List[dict]:
     elo_rankings = build_elo_rankings(ratings)
     elo_rank_map = {team: rank for rank, team, _ in elo_rankings}
     elo_value_map = {team: elo for _, team, elo in elo_rankings}
@@ -134,11 +154,15 @@ def compare_elo_vs_standings(league: BaseLeague, ratings: Dict[str, float], game
         team = row["team"]
         elo_rank = elo_rank_map[team]
         standings_rank = row["standings_rank"]
+        trend_value = 0.0
+        if team_history is not None and team in team_history:
+            trend_value = _elo_trend_last_10_games(team_history[team])
         comparison.append({
             **row,
             "elo_rank": elo_rank,
             "rank_diff": standings_rank - elo_rank,
             "elo": round(elo_value_map[team], 2),
+            "elo_trend_10g": round(trend_value, 1),
         })
 
     return sorted(comparison, key=lambda x: x["elo_rank"])

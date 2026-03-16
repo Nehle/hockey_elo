@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.3] - 2026-03-16
+
+### Added
+
+- Current Ratings now includes `ELO Trend (10g)` based on Elo change over each team's last 10 completed games
+- Unit tests for Elo trend column behavior across >=10 games, <10 games fallback, and no-games edge cases
+
+### Changed
+
+- Elo trend values now stay numeric in the table and use signed display formatting, so sorting works numerically instead of alphabetically
+- CLI comparison generation now receives team history so trend data is available consistently across app and CLI paths
+
 ## [0.2.2] - 2026-03-16
 
 ### Added

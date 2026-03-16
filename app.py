@@ -100,7 +100,7 @@ def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, use_mo
         league, _completed_games, BASE_ELO,
         k_factor, home_ice, win_weights, use_mov, mov_cap
     )
-    comparison = compare_elo_vs_standings(league, ratings, _completed_games)
+    comparison = compare_elo_vs_standings(league, ratings, _completed_games, team_history)
     records = league.build_team_records(_completed_games)
     divisions, interdivision_rows = build_interdivision_matrix(league, _completed_games, win_weights)
     return ratings, history, team_history, comparison, records, divisions, interdivision_rows
@@ -255,14 +255,25 @@ with tab1:
     st.subheader(f"Current Ratings ({season_label})")
     
     df = pd.DataFrame(comparison)
-    display_cols = ['elo_rank', 'standings_rank', 'rank_diff', 'team', 'conference', 'division', 'elo', 'Pts', 'GP', 'W', 'OTW', 'L', 'OTL']
+    display_cols = ['elo_rank', 'standings_rank', 'rank_diff', 'team', 'conference', 'division', 'elo', 'elo_trend_10g', 'Pts', 'GP', 'W', 'OTW', 'L', 'OTL']
     col_names = {
         'elo_rank': 'ELO Rank', 'standings_rank': 'Points Rank', 'rank_diff': 'Rank Diff',
         'team': 'Team', 'conference': 'Conference', 'division': 'Division',
-        'elo': 'ELO', 'Pts': 'Points', 'OTW': 'OTW'
+        'elo': 'ELO', 'elo_trend_10g': 'ELO Trend (10g)', 'Pts': 'Points', 'OTW': 'OTW'
     }
-    
-    st.dataframe(df[display_cols].rename(columns=col_names), width="stretch", hide_index=True)
+
+    df_display = df[display_cols].rename(columns=col_names)
+    st.dataframe(
+        df_display,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "ELO Trend (10g)": st.column_config.NumberColumn(
+                "ELO Trend (10g)",
+                format="%+.1f",
+            )
+        },
+    )
 
 with tab2:
     st.subheader("ELO Rating History")

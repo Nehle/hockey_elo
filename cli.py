@@ -105,7 +105,7 @@ def main():
     ratings, history, team_history = calculate_elo(league, completed, initial_elo, k_factor, home_ice_advantage, win_weights)
     
     print("Generating Analytics...")
-    comparison = compare_elo_vs_standings(league, ratings, completed)
+    comparison = compare_elo_vs_standings(league, ratings, completed, team_history)
     divisions, interdivision_rows = build_interdivision_matrix(league, completed, win_weights)
 
     print(f"Running {args.sims} simulations from today...")
