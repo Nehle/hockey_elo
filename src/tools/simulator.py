@@ -64,6 +64,7 @@ def simulate_season_and_playoffs_from_today(
         team: {
             "team": team, "conference": team_info[team]["conference"], "division": team_info[team]["division"],
             "make_playoffs": 0, "make_qf": 0, "make_sf": 0, "make_final": 0, "win_champ": 0,
+            "final_points_total": 0.0,
         }
         for team in teams
     }
@@ -88,6 +89,10 @@ def simulate_season_and_playoffs_from_today(
             ratings[home_team] = home_after
             league.apply_simulated_game_to_records(records, away_team, home_team, away_score, home_score, finish_type)
 
+        # Capture expected final regular-season points (averaged over simulations).
+        for team in teams:
+            results[team]["final_points_total"] += float(records.get(team, {}).get("Pts", 0.0))
+
         final_records_list = [r for r in records.values()]
         # Then we call the playoff simulator for that specific league passing specific final_records_list and new ELO ratings
         sim_stats = league.simulate_playoffs(final_records_list, ratings, 1, rng, home_ice_advantage=home_ice_advantage, use_mov=use_mov, mov_cap=mov_cap)
@@ -105,6 +110,7 @@ def simulate_season_and_playoffs_from_today(
         out.append({
             "team": team, "conference": r["conference"], "division": r["division"],
             "current_elo": round(current_ratings[team], 2),
+            "final_points_avg": round(r["final_points_total"] / simulations, 2) if simulations > 0 else 0.0,
             "make_playoffs_prob": round(r["make_playoffs"] / simulations, 4),
             "make_qf_prob": round(r["make_qf"] / simulations, 4),
             "make_sf_prob": round(r["make_sf"] / simulations, 4),

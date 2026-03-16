@@ -11,6 +11,7 @@ from src.tools.analytics import compare_elo_vs_standings, build_interdivision_ma
 from src.tools.simulator import simulate_season_and_playoffs_from_today
 
 BASE_ELO = 1000.0
+SIM_RESULTS_SCHEMA_VERSION = "2026-03-16-final-points-v2"
 
 # Initialize session state for parameters
 if 'k_factor' not in st.session_state:
@@ -106,7 +107,7 @@ def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, use_mo
     return ratings, history, team_history, comparison, records, divisions, interdivision_rows
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win, so_win, use_mov, mov_cap, season_id, league_id, cutoff_date_key):
+def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win, so_win, use_mov, mov_cap, season_id, league_id, cutoff_date_key, sim_schema_version):
     sim_logic_version = "2026-03-16-shl-playoff-hardcode-v1"
     ww = {
         'REG_WIN': 1.0, 'REG_LOSS': 0.0,
@@ -360,10 +361,13 @@ with tab4:
                     st.session_state.k_factor, st.session_state.home_ice_advantage,
                     st.session_state.ot_win_weight, st.session_state.so_win_weight,
                     st.session_state.use_mov, st.session_state.mov_cap,
-                    SEASON_SELECT, st.session_state.league_choice, cutoff_date_key
+                    SEASON_SELECT, st.session_state.league_choice, cutoff_date_key, SIM_RESULTS_SCHEMA_VERSION
                 )
             
                 df_sim = pd.DataFrame(results)
+                if 'final_points_avg' not in df_sim.columns:
+                    points_by_team = {row['team']: float(row.get('Pts', 0.0)) for row in records}
+                    df_sim['final_points_avg'] = df_sim['team'].map(points_by_team).fillna(0.0)
                 st.write(f"### Simulation Results ({st.session_state.num_simulations} runs)")
             
                 playoff_cols_dict = league.get_playoff_column_names()
@@ -376,13 +380,13 @@ with tab4:
                 ]
             
                 display_cols = [
-                    'team', 'conference', 'division', 'current_elo', 
+                    'team', 'conference', 'division', 'current_elo', 'final_points_avg',
                     'make_playoffs_prob', 'make_qf_prob', 'make_sf_prob', 
                     'make_final_prob', 'win_champ_prob'
                 ]
             
                 rename_cols = {
-                    'team': 'Team', 'conference': 'Conf', 'division': 'Div', 'current_elo': 'Cur. ELO',
+                    'team': 'Team', 'conference': 'Conf', 'division': 'Div', 'current_elo': 'Cur. ELO', 'final_points_avg': 'Final Pts (avg)',
                     'make_playoffs_prob': playoff_cols_dict.get('make_playoffs', 'Make Playoffs'), 
                     'make_qf_prob': playoff_cols_dict.get('make_qf', 'Round 2'),
                     'make_sf_prob': playoff_cols_dict.get('make_sf', 'Conf Finals'), 
@@ -405,6 +409,7 @@ with tab4:
 
                 sim_col_config = {
                     "Cur. ELO": st.column_config.NumberColumn("Cur. ELO", format="%.2f"),
+                    "Final Pts (avg)": st.column_config.NumberColumn("Final Pts (avg)", format="%.2f"),
                 }
                 for column in percent_cols:
                     sim_col_config[column] = st.column_config.NumberColumn(column, format="%.1f%%")

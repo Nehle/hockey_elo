@@ -12,7 +12,7 @@ class TrackingLeague(BaseLeague):
         raise NotImplementedError()
 
     def build_team_records(self, games):
-        return [{"team": "A"}, {"team": "B"}]
+        return [{"team": "A", "Pts": 10}, {"team": "B", "Pts": 8}]
 
     def actual_scores(self, game, win_weights):
         if game.away_score > game.home_score:
@@ -105,6 +105,9 @@ def test_simulator_forwards_mov_to_update_and_playoffs(monkeypatch):
     assert calls[0]["mov_cap"] == 7
     assert league.last_playoff_kwargs.get("use_mov") is True
     assert league.last_playoff_kwargs.get("mov_cap") == 7
+    by_team = {row["team"]: row for row in result}
+    assert by_team["A"]["final_points_avg"] == 10.0
+    assert by_team["B"]["final_points_avg"] == 8.0
 
 
 def test_simulator_skips_non_regular_remaining_games(monkeypatch):

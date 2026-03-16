@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.5] - 2026-03-16
+
+### Added
+
+- Simulation output now includes average final regular-season points per team (`Final Pts (avg)`) in the app table
+
+### Changed
+
+- Simulations table now keeps `Final Pts (avg)` numeric so the column can be sorted directly in the UI
+- Added backward-compatible handling for older cached simulation payloads that do not include `final_points_avg`
+- Bumped simulation cache schema key to invalidate stale cached results after the new output field addition
+
 ## [0.2.4] - 2026-03-16
 
 ### Added
