@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.4] - 2026-03-16
+
+### Added
+
+- SHL game-type tagging (`REG` vs `PLAYOFF`) in fetched schedule data
+- SHL playoff regression tests covering top-6 direct quarterfinal qualification, 7-10 play-in behavior, and standings exclusion of playoff games
+- Simulator regression test ensuring non-regular remaining games are skipped in season simulation
+
+### Changed
+
+- SHL standings now count only regular-season games for seeding purposes
+- SHL playoff bracket is now explicitly hardcoded to: top-6 direct to quarterfinals, 7v10 and 8v9 play-in, then reseeding by highest-vs-lowest seed each round
+- Simulation table playoff probabilities now remain numeric in the app grid so sorting behaves correctly (no string-based percent sorting issues)
+- SHL simulation table display now shows 100% in the first-stage column for teams already guaranteed quarterfinal participation
+- Streamlit cache keys were refreshed for game fetch and simulation outputs to avoid stale pre-fix SHL results
+
 ## [0.2.3] - 2026-03-16
 
 ### Added

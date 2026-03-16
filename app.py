@@ -83,8 +83,8 @@ st.sidebar.toggle("Enable MoV Multiplier", key="use_mov")
 st.sidebar.slider("MoV Goal Differential Cap", min_value=1, max_value=10, step=1, key="mov_cap", disabled=not st.session_state.use_mov)
 
 @st.cache_data(ttl=3600)
-def fetch_game_data_v2(season, league_name):
-    # This caching now implicitly ties into the resolved league class above.
+def fetch_game_data(season):
+    cache_schema_version = "2026-03-16-shl-game-type-v1"
     completed, remaining = league.fetch_games(season)
     return completed, remaining, league.get_teams(), league.team_info()
 
@@ -107,6 +107,7 @@ def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, use_mo
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win, so_win, use_mov, mov_cap, season_id, league_id, cutoff_date_key):
+    sim_logic_version = "2026-03-16-shl-playoff-hardcode-v1"
     ww = {
         'REG_WIN': 1.0, 'REG_LOSS': 0.0,
         'OT_WIN': ot_win, 'OT_LOSS': 1.0 - ot_win,
@@ -149,7 +150,7 @@ def estimate_home_ice_value(
 
 try:
     with st.spinner('Loading data...'):
-        completed_games, remaining_games, c_teams, c_team_info = fetch_game_data_v2(SEASON_SELECT, st.session_state.league_choice)
+        completed_games, remaining_games, c_teams, c_team_info = fetch_game_data(SEASON_SELECT)
         if hasattr(league, '_teams'):
             league._teams = c_teams
         if hasattr(league, '_team_info'):
@@ -389,12 +390,31 @@ with tab4:
                     'win_champ_prob': playoff_cols_dict.get('win_champ', 'Champ')
                 }
             
-                df_display = df_sim[display_cols].rename(columns=rename_cols)
-                df_display['Cur. ELO'] = df_display['Cur. ELO'].map(lambda value: f"{value:.2f}")
+                df_display = df_sim[display_cols].rename(columns=rename_cols).copy()
+
+                # SHL presentation tweak: teams that already have direct QF qualification
+                # should also show 100% in the first playoff-stage column.
+                if st.session_state.league_choice == "SHL":
+                    first_stage_col = rename_cols['make_playoffs_prob']
+                    qf_col = rename_cols['make_qf_prob']
+                    df_display[first_stage_col] = df_display[[first_stage_col, qf_col]].max(axis=1)
+
+                # Keep numeric types for proper sorting, then format as percentages in the grid.
                 for column in percent_cols:
-                    df_display[column] = df_display[column].map(lambda value: f"{value:.1%}")
-            
-                st.dataframe(df_display, width="stretch", hide_index=True)
+                    df_display[column] = df_display[column] * 100.0
+
+                sim_col_config = {
+                    "Cur. ELO": st.column_config.NumberColumn("Cur. ELO", format="%.2f"),
+                }
+                for column in percent_cols:
+                    sim_col_config[column] = st.column_config.NumberColumn(column, format="%.1f%%")
+
+                st.dataframe(
+                    df_display,
+                    width="stretch",
+                    hide_index=True,
+                    column_config=sim_col_config,
+                )
             
                 st.write("### Championship Probabilities")
                 fig_sim = px.bar(

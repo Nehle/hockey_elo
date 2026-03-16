@@ -26,7 +26,8 @@ class SHLLeague(BaseLeague):
         return self._team_info
 
     def build_team_records(self, games: List[GameResult]) -> List[dict]:
-        # Initialize records
+        # Only count regular-season games in standings; playoff games don't affect seeds
+        reg_games = [g for g in games if getattr(g, 'game_type', 'REG') == "REG"]
         records_dict = {
             team: {
                 'team': team, 
@@ -39,7 +40,7 @@ class SHLLeague(BaseLeague):
         }
 
         # Calculate using SHL 3-point system
-        for g in games:
+        for g in reg_games:
             if g.home_team not in records_dict or g.away_team not in records_dict:
                 continue
 
@@ -168,72 +169,96 @@ class SHLLeague(BaseLeague):
     def simulate_playoffs(self, records: list, ratings: dict, simulations: int, rng, **kwargs) -> list:
         home_ice_advantage = kwargs.get('home_ice_advantage', 33.0)
         from src.core.elo import expected_score
-        
+
         stats = {r['team']: {"make_playoffs": 0, "make_qf": 0, "make_sf": 0, "make_final": 0, "win_champ": 0} for r in records}
-        
+
+        def win_series(t1, t2, best_of):
+            if not t1:
+                return t2
+            if not t2:
+                return t1
+            wins_needed = (best_of // 2) + 1
+            t1_wins, t2_wins = 0, 0
+            while t1_wins < wins_needed and t2_wins < wins_needed:
+                games_played = t1_wins + t2_wins
+                if best_of == 3:
+                    is_t1_home = games_played in [0, 2]  # 1st and 3rd games at higher seed home
+                else:
+                    is_t1_home = games_played in [0, 1, 4, 6]
+
+                if is_t1_home:
+                    p = expected_score(ratings[t1] + home_ice_advantage, ratings[t2])
+                    if rng.random() < p:
+                        t1_wins += 1
+                    else:
+                        t2_wins += 1
+                else:
+                    p = expected_score(ratings[t2] + home_ice_advantage, ratings[t1])
+                    if rng.random() < p:
+                        t2_wins += 1
+                    else:
+                        t1_wins += 1
+
+            return t1 if t1_wins == wins_needed else t2
+
+        def pair_highest_vs_lowest(seeded_teams):
+            pairs = []
+            left = 0
+            right = len(seeded_teams) - 1
+            while left < right:
+                pairs.append((seeded_teams[left], seeded_teams[right]))
+                left += 1
+                right -= 1
+            return pairs
+
         for _ in range(simulations):
             records_sorted = sorted(records, key=lambda x: (x.get('Pts', 0), x.get('W', 0)), reverse=True)
             standings_teams = [r['team'] for r in records_sorted]
             rank_map = {t: i for i, t in enumerate(standings_teams)}
-            
-            def win_series(t1, t2, best_of):
-                if not t1: return t2
-                if not t2: return t1
-                wins_needed = (best_of // 2) + 1
-                t1_wins, t2_wins = 0, 0
-                while t1_wins < wins_needed and t2_wins < wins_needed:
-                    games_played = t1_wins + t2_wins
-                    if best_of == 3:
-                        is_t1_home = games_played in [0, 2] # 1st and 3rd gm at home
-                    else:
-                        is_t1_home = games_played in [0, 1, 4, 6]
-                    if is_t1_home:
-                        p = expected_score(ratings[t1] + home_ice_advantage, ratings[t2])
-                        if rng.random() < p: t1_wins += 1
-                        else: t2_wins += 1
-                    else:
-                        p = expected_score(ratings[t2] + home_ice_advantage, ratings[t1])
-                        if rng.random() < p: t2_wins += 1
-                        else: t1_wins += 1
-                return t1 if t1_wins == wins_needed else t2
 
-            for t in standings_teams[:10]: stats[t]["make_playoffs"] += 1
-                
-            qf_teams = standings_teams[:6]
+            # SHL hard rules: top-6 get direct quarterfinal spots, seeds 7-10 play åttondelsfinal.
+            top_six = standings_teams[:6]
             playin = standings_teams[6:10]
-            
+
+            # "Åttondelsfinal" column tracks teams that reach/play this round (seeds 7-10).
+            for t in playin:
+                stats[t]["make_playoffs"] += 1
+
+            # Top-6 are guaranteed quarterfinals.
+            qf_teams = list(top_six)
+            for t in top_six:
+                stats[t]["make_qf"] += 1
+
+            # Åttondelsfinal (best-of-3): 7v10 and 8v9.
             if len(playin) == 4:
                 w1 = win_series(playin[0], playin[3], 3)
                 w2 = win_series(playin[1], playin[2], 3)
                 qf_teams.extend([w1, w2])
-                
-            qf_teams.sort(key=lambda x: rank_map[x])
-            for t in qf_teams: stats[t]["make_qf"] += 1
-                
+                stats[w1]["make_qf"] += 1
+                stats[w2]["make_qf"] += 1
+
+            # Reseed every round: highest remaining seed plays lowest remaining seed.
+            qf_seeded = sorted(qf_teams, key=lambda x: rank_map[x])
             sf_teams = []
-            if len(qf_teams) == 8:
-                sf_teams.extend([
-                    win_series(qf_teams[0], qf_teams[7], 7),
-                    win_series(qf_teams[1], qf_teams[6], 7),
-                    win_series(qf_teams[2], qf_teams[5], 7),
-                    win_series(qf_teams[3], qf_teams[4], 7)
-                ])
-                
-            sf_teams.sort(key=lambda x: rank_map[x])
-            for t in sf_teams: stats[t]["make_sf"] += 1
-                
+            if len(qf_seeded) == 8:
+                for higher, lower in pair_highest_vs_lowest(qf_seeded):
+                    sf_teams.append(win_series(higher, lower, 7))
+
+            for t in sf_teams:
+                stats[t]["make_sf"] += 1
+
+            sf_seeded = sorted(sf_teams, key=lambda x: rank_map[x])
             final_teams = []
-            if len(sf_teams) == 4:
-                final_teams.extend([
-                    win_series(sf_teams[0], sf_teams[3], 7),
-                    win_series(sf_teams[1], sf_teams[2], 7)
-                ])
-                
-            final_teams.sort(key=lambda x: rank_map[x])
-            for t in final_teams: stats[t]["make_final"] += 1
-                
-            if len(final_teams) == 2:
-                champ = win_series(final_teams[0], final_teams[1], 7)
+            if len(sf_seeded) == 4:
+                for higher, lower in pair_highest_vs_lowest(sf_seeded):
+                    final_teams.append(win_series(higher, lower, 7))
+
+            for t in final_teams:
+                stats[t]["make_final"] += 1
+
+            final_seeded = sorted(final_teams, key=lambda x: rank_map[x])
+            if len(final_seeded) == 2:
+                champ = win_series(final_seeded[0], final_seeded[1], 7)
                 stats[champ]["win_champ"] += 1
 
         out = []

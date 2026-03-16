@@ -73,6 +73,8 @@ def simulate_season_and_playoffs_from_today(
         records = {team: {key: value for key, value in rec.items()} for team, rec in base_records.items()}
 
         for game in remaining_games:
+            if getattr(game, "game_type", "REG") != "REG":
+                continue
             (away_team, home_team, away_score, home_score, finish_type, away_actual, home_actual) = simulate_future_game(
                 league, game, ratings, finish_probs, rng, home_ice_advantage, win_weights
             )

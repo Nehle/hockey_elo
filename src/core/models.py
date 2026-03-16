@@ -10,6 +10,7 @@ class GameResult:
     away_score: int
     home_score: int
     last_period_type: str  # e.g., REG / OT / SO / UNKNOWN
+    game_type: str = "REG"  # "REG" = regular season, "PLAYOFF" = post-season
 
 @dataclass
 class PlayoffSeed:

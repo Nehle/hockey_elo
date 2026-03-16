@@ -3,6 +3,7 @@ import time
 from typing import List, Tuple, Dict
 from src.core.models import GameResult
 from functools import lru_cache
+from src.leagues.shl.constants import ALL_GAME_TYPES, GAME_TYPE_REGULAR_SEASON
 
 @lru_cache(maxsize=1)
 def get_shl_seasons() -> Dict[str, str]:
@@ -29,25 +30,25 @@ def get_shl_seasons() -> Dict[str, str]:
         return {"2025/2026": "xs4m9qupsi", "2024/2025": "qeb-73bZkIm9A"}
 
 def fetch_shl_games(season_uuid: str = "xs4m9qupsi") -> Tuple[List[GameResult], List[GameResult], List[str], Dict]:
-    game_types = ["qQ9-af37Ti40B", "qQ9-7debq38kX", "qRf-347BaDIOc"]
-    games_data = []
+    # Fetch each game type separately so we can tag games as REG vs PLAYOFF
+    games_data = []  # list of (raw_game_dict, game_type_uuid)
 
-    for gt in game_types:
+    for gt in ALL_GAME_TYPES:
         url = f"https://www.shl.se/api/sports-v2/game-schedule?seasonUuid={season_uuid}&seriesUuid=qQ9-bb0bzEWUk&gameTypeUuid={gt}&gamePlace=all&played=all&_t={int(time.time())}"
-        
         resp = requests.get(url, timeout=15)
         resp.raise_for_status()
         data = resp.json()
-        games_data.extend(data.get("gameInfo", []))
+        for g in data.get("gameInfo", []):
+            games_data.append((g, gt))
     
-    # Sort games by startDateTime chronologically just in case types overlap weirdly
-    games_data.sort(key=lambda x: x.get("startDateTime", ""))
-    
+    # Sort chronologically
+    games_data.sort(key=lambda x: x[0].get("startDateTime", ""))
     completed_games = []
     remaining_games = []
     out_team_info = {}
     
-    for g in games_data:
+    for g, gt in games_data:
+        game_type_tag = "REG" if gt == GAME_TYPE_REGULAR_SEASON else "PLAYOFF"
         ht = g.get("homeTeamInfo", {})
         at = g.get("awayTeamInfo", {})
         home_team = ht.get("code")
@@ -104,7 +105,8 @@ def fetch_shl_games(season_uuid: str = "xs4m9qupsi") -> Tuple[List[GameResult], 
                 away_team=away_team,
                 home_score=home_score,
                 away_score=away_score,
-                last_period_type=decided_in
+                last_period_type=decided_in,
+                game_type=game_type_tag,
             )
             completed_games.append(game_obj)
         else:
@@ -115,7 +117,8 @@ def fetch_shl_games(season_uuid: str = "xs4m9qupsi") -> Tuple[List[GameResult], 
                 away_team=away_team,
                 home_score=0,
                 away_score=0,
-                last_period_type="UNKNOWN"
+                last_period_type="UNKNOWN",
+                game_type=game_type_tag,
             )
             remaining_games.append(game_obj)
             

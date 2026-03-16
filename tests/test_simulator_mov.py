@@ -105,3 +105,51 @@ def test_simulator_forwards_mov_to_update_and_playoffs(monkeypatch):
     assert calls[0]["mov_cap"] == 7
     assert league.last_playoff_kwargs.get("use_mov") is True
     assert league.last_playoff_kwargs.get("mov_cap") == 7
+
+
+def test_simulator_skips_non_regular_remaining_games(monkeypatch):
+    league = TrackingLeague()
+    calls = []
+
+    def fake_update_elo(
+        away_elo,
+        home_elo,
+        away_actual,
+        home_actual,
+        k,
+        home_ice_advantage,
+        use_mov=False,
+        mov_cap=5,
+        away_goals=0,
+        home_goals=0,
+    ):
+        calls.append((away_elo, home_elo))
+        return away_elo, home_elo
+
+    monkeypatch.setattr(simulator_mod, "update_elo", fake_update_elo)
+
+    playoff_game = GameResult(
+        game_id="future-playoff-1",
+        game_date="2026-03-20",
+        away_team="A",
+        home_team="B",
+        away_score=0,
+        home_score=0,
+        last_period_type="REG",
+        game_type="PLAYOFF",
+    )
+
+    result = simulator_mod.simulate_season_and_playoffs_from_today(
+        league=league,
+        completed_games=[],
+        remaining_games=[playoff_game],
+        current_ratings={"A": 1500.0, "B": 1500.0},
+        simulations=1,
+        home_ice_advantage=33.0,
+        k_factor=20.0,
+        win_weights={"REG_WIN": 1.0, "REG_LOSS": 0.0, "OT_WIN": 0.67, "OT_LOSS": 0.33, "SO_WIN": 0.55, "SO_LOSS": 0.45},
+        seed=7,
+    )
+
+    assert len(result) == 2
+    assert calls == []
