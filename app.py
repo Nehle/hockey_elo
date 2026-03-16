@@ -260,11 +260,11 @@ with tab3:
 
 with tab4:
     st.subheader("Season & Playoffs Simulations")
-    st.write("Run Monte Carlo simulations to predict playoff odds and Stanley Cup winners based on remaining schedule and current ELO.")
+    st.write("Run Monte Carlo simulations to predict playoff odds and cup winners based on remaining schedule and current ELO.")
     
     col1, col2 = st.columns([1, 3])
     with col1:
-        st.number_input("Simulation Iterations", min_value=100, max_value=50000, step=500, key="num_simulations")
+        st.number_input("Simulation Iterations", min_value=100, max_value=10000, step=500, key="num_simulations")
         run_btn = st.button("Run Simulations", type="primary")
         
     with col2:
@@ -287,14 +287,13 @@ with tab4:
                 st.write(f"### Simulation Results ({st.session_state.num_simulations} runs)")
             
                 playoff_cols_dict = league.get_playoff_column_names()
-                format_dict = {
-                    'Cur. ELO': '{:.2f}', 
-                    playoff_cols_dict.get('make_playoffs', 'Make Playoffs'): '{:.1%}', 
-                    playoff_cols_dict.get('make_qf', 'Round 2'): '{:.1%}', 
-                    playoff_cols_dict.get('make_sf', 'Conf Finals'): '{:.1%}', 
-                    playoff_cols_dict.get('make_final', 'Finals'): '{:.1%}', 
-                    playoff_cols_dict.get('win_champ', 'Champ'): '{:.1%}'
-                }
+                percent_cols = [
+                    playoff_cols_dict.get('make_playoffs', 'Make Playoffs'),
+                    playoff_cols_dict.get('make_qf', 'Round 2'),
+                    playoff_cols_dict.get('make_sf', 'Conf Finals'),
+                    playoff_cols_dict.get('make_final', 'Finals'),
+                    playoff_cols_dict.get('win_champ', 'Champ'),
+                ]
             
                 display_cols = [
                     'team', 'conference', 'division', 'current_elo', 
@@ -312,9 +311,11 @@ with tab4:
                 }
             
                 df_display = df_sim[display_cols].rename(columns=rename_cols)
-                styled_df = df_display.style.format(format_dict)
+                df_display['Cur. ELO'] = df_display['Cur. ELO'].map(lambda value: f"{value:.2f}")
+                for column in percent_cols:
+                    df_display[column] = df_display[column].map(lambda value: f"{value:.1%}")
             
-                st.dataframe(styled_df, width="stretch", hide_index=True)
+                st.dataframe(df_display, width="stretch", hide_index=True)
             
                 st.write("### Championship Probabilities")
                 fig_sim = px.bar(
@@ -345,8 +346,9 @@ with tab5:
         matrix_data,
         x=divisions, y=divisions,
         labels=dict(x="Opponent Division", y="Division", color="Average Score Pct"),
-        text_auto=".3f", color_continuous_scale="RdBu_r", aspect="auto"
+        text_auto=True, color_continuous_scale="RdBu_r", aspect="auto"
     )
+    fig_heat.update_traces(texttemplate="%{z:.3f}")
     
     fig_heat.update_layout(
         title="Interdivision Win/Loss Matrix", height=500,
