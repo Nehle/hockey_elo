@@ -7,16 +7,16 @@ from datetime import date
 from src.leagues.nhl.league import NHLLeague
 from src.leagues.shl.league import SHLLeague
 from src.core.elo import calculate_elo, build_elo_rankings
-from src.tools.analytics import compare_elo_vs_standings, build_interdivision_matrix
+from src.tools.analytics import compare_elo_vs_standings, build_interdivision_matrix, estimate_home_ice_advantage
 from src.tools.simulator import simulate_season_and_playoffs_from_today
+
+BASE_ELO = 1000.0
 
 # Initialize session state for parameters
 if 'k_factor' not in st.session_state:
     st.session_state.k_factor = 32.0
 if 'home_ice_advantage' not in st.session_state:
     st.session_state.home_ice_advantage = 33.0
-if 'initial_elo' not in st.session_state:
-    st.session_state.initial_elo = 1500.0
 if 'ot_win_weight' not in st.session_state:
     st.session_state.ot_win_weight = 0.67
 if 'so_win_weight' not in st.session_state:
@@ -35,6 +35,15 @@ if 'elo_cutoff_date' not in st.session_state:
     st.session_state.elo_cutoff_date = None
 if 'cutoff_scope_key' not in st.session_state:
     st.session_state.cutoff_scope_key = ""
+if 'home_ice_estimate_notice' not in st.session_state:
+    st.session_state.home_ice_estimate_notice = ""
+if 'pending_home_ice_advantage' not in st.session_state:
+    st.session_state.pending_home_ice_advantage = None
+
+# Apply pending slider updates before creating the Home Ice widget.
+if st.session_state.pending_home_ice_advantage is not None:
+    st.session_state.home_ice_advantage = st.session_state.pending_home_ice_advantage
+    st.session_state.pending_home_ice_advantage = None
 
 st.set_page_config(page_title="Hockey ELO Ratings", layout="wide")
 
@@ -55,9 +64,13 @@ season_label = st.sidebar.selectbox("Season", season_labels, index=0)
 SEASON_SELECT = available_seasons[season_label]
 
 st.sidebar.header("ELO Parameters")
-st.sidebar.slider("Initial ELO", min_value=1000.0, max_value=2000.0, step=50.0, key="initial_elo")
+st.sidebar.caption(f"Base ELO: {BASE_ELO:.0f} (fixed)")
 st.sidebar.slider("K-Factor", min_value=1.0, max_value=100.0, step=1.0, key="k_factor")
 st.sidebar.slider("Home Ice Advantage", min_value=0.0, max_value=200.0, step=1.0, key="home_ice_advantage")
+estimate_home_ice_btn = st.sidebar.button("Estimate Home Ice From Data")
+if st.session_state.home_ice_estimate_notice:
+    st.sidebar.success(st.session_state.home_ice_estimate_notice)
+    st.session_state.home_ice_estimate_notice = ""
 
 st.sidebar.header("Game Type Weights")
 st.sidebar.markdown("Define ELO points gained for wins (loser gets 1 - weight). 1.0 means winner takes all, 0.5 means a tie.")
@@ -76,7 +89,7 @@ def fetch_game_data_v2(season, league_name):
     return completed, remaining, league.get_teams(), league.team_info()
 
 @st.cache_data(ttl=3600)
-def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, initial_elo, use_mov, mov_cap, league_name, season_id, cutoff_date_key):
+def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, use_mov, mov_cap, league_name, season_id, cutoff_date_key):
     win_weights = {
         'REG_WIN': 1.0, 'REG_LOSS': 0.0,
         'OT_WIN': ot_win, 'OT_LOSS': 1.0 - ot_win,
@@ -84,7 +97,7 @@ def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, initia
     }
     
     ratings, history, team_history = calculate_elo(
-        league, _completed_games, initial_elo,
+        league, _completed_games, BASE_ELO,
         k_factor, home_ice, win_weights, use_mov, mov_cap
     )
     comparison = compare_elo_vs_standings(league, ratings, _completed_games)
@@ -104,6 +117,35 @@ def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win
         home_ice_advantage=home, k_factor=k, win_weights=ww,
         use_mov=use_mov, mov_cap=mov_cap
     )
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def estimate_home_ice_value(
+    _completed_games,
+    k_factor,
+    ot_win,
+    so_win,
+    use_mov,
+    mov_cap,
+    league_name,
+    season_id,
+    cutoff_date_key,
+):
+    win_weights = {
+        'REG_WIN': 1.0, 'REG_LOSS': 0.0,
+        'OT_WIN': ot_win, 'OT_LOSS': 1.0 - ot_win,
+        'SO_WIN': so_win, 'SO_LOSS': 1.0 - so_win
+    }
+    estimated, objective = estimate_home_ice_advantage(
+        league=league,
+        games=_completed_games,
+        win_weights=win_weights,
+        initial_elo=BASE_ELO,
+        k_factor=k_factor,
+        use_mov=use_mov,
+        mov_cap=mov_cap,
+    )
+    return estimated, objective
 
 try:
     with st.spinner('Loading data...'):
@@ -159,13 +201,39 @@ if selected_cutoff_date is not None:
         f"Using games through {cutoff_date_key} for ELO/analytics. Simulations run after that date."
     )
 
+if estimate_home_ice_btn:
+    min_games_for_estimate = 100
+    if len(completed_games_for_elo) < min_games_for_estimate:
+        st.sidebar.warning(
+            f"Need at least {min_games_for_estimate} games to estimate home ice (found {len(completed_games_for_elo)})."
+        )
+    else:
+        with st.spinner("Estimating home ice advantage..."):
+            estimated_home_ice, objective = estimate_home_ice_value(
+                completed_games_for_elo,
+                st.session_state.k_factor,
+                st.session_state.ot_win_weight,
+                st.session_state.so_win_weight,
+                st.session_state.use_mov,
+                st.session_state.mov_cap,
+                st.session_state.league_choice,
+                SEASON_SELECT,
+                cutoff_date_key,
+            )
+        estimated_home_ice = float(max(0.0, min(200.0, round(estimated_home_ice))))
+        st.session_state.pending_home_ice_advantage = estimated_home_ice
+        st.session_state.home_ice_estimate_notice = (
+            f"Estimated home ice set to {estimated_home_ice:.0f} Elo points from {len(completed_games_for_elo)} games "
+            f"(MSE: {objective:.4f})."
+        )
+        st.rerun()
+
 ratings, history, team_history, comparison, records, divisions, interdivision_rows = compute_ratings(
     completed_games_for_elo,
     st.session_state.k_factor,
     st.session_state.home_ice_advantage,
     st.session_state.ot_win_weight,
     st.session_state.so_win_weight,
-    st.session_state.initial_elo,
     st.session_state.use_mov,
     st.session_state.mov_cap,
     st.session_state.league_choice,
@@ -330,8 +398,8 @@ with tab4:
 
 with tab5:
     st.subheader("Interdivision Score Percentage Matrix")
-    st.write("Values represent average ELO-style game scores by row division vs column division.")
-    st.write("*(1.0 means the row division won every game in regulation, 0.0 means they lost every game in regulation)*")
+    st.write("Values represent average ELO-style game scores by row division vs column division, shown as percentages.")
+    st.write("*(100% means the row division won every game in regulation, 0% means they lost every game in regulation)*")
     
     matrix_data = []
     
@@ -339,19 +407,19 @@ with tab5:
         matrix_row = []
         for col_idx, d in enumerate(divisions):
             val = row[d]
-            matrix_row.append(float("nan") if val is None else val)
+            matrix_row.append(float("nan") if val is None else val * 100.0)
         matrix_data.append(matrix_row)
         
     fig_heat = px.imshow(
         matrix_data,
         x=divisions, y=divisions,
-        labels=dict(x="Opponent Division", y="Division", color="Average Score Pct"),
+        labels=dict(x="Opponent Division", y="Division", color="Average Score (%)"),
         text_auto=True, color_continuous_scale="RdBu_r", aspect="auto"
     )
-    fig_heat.update_traces(texttemplate="%{z:.3f}")
+    fig_heat.update_traces(texttemplate="%{z:.1f}%", hovertemplate="Division: %{y}<br>Opponent: %{x}<br>Average Score: %{z:.1f}%<extra></extra>")
     
     fig_heat.update_layout(
         title="Interdivision Win/Loss Matrix", height=500,
-        xaxis_title="Opponent Division", yaxis_title="Division", coloraxis_colorbar=dict(title="%")
+        xaxis_title="Opponent Division", yaxis_title="Division", coloraxis_colorbar=dict(title="Average %")
     )
     st.plotly_chart(fig_heat, width="stretch")

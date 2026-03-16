@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.2] - 2026-03-16
+
+### Added
+
+- Sidebar button to estimate home ice advantage from the current active data scope
+- Home-ice estimator utility with coarse/fine grid-search calibration against completed games
+- Unit tests for home-ice estimator behavior and empty-input safeguards
+
+### Changed
+
+- Base ELO is now fixed to 1000 in the Streamlit app (removed configurable initial ELO control)
+- Interdivision heatmap now displays percentage values directly (0-100%) instead of fractions
+- Home-ice estimate button now updates slider value through safe deferred session-state flow
+
 ## [0.2.0] - 2026-03-15
 
 ### Added
