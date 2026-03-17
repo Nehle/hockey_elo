@@ -1,4 +1,5 @@
 import random
+import pytest
 
 from src.leagues.shl.league import SHLLeague
 from src.core.models import GameResult
@@ -50,10 +51,11 @@ def test_shl_top_six_have_guaranteed_qf_and_playin_is_7_to_10_only():
         assert by_team[team]["make_qf"] == 0.0
 
     # Round participant count invariants per simulation: 8 QF, 4 SF, 2 Final, 1 Champion.
+    # Use approx() to handle floating-point rounding accumulation from individual team rounding.
     assert sum(row["make_qf"] for row in out) == 8.0
     assert sum(row["make_sf"] for row in out) == 4.0
     assert sum(row["make_final"] for row in out) == 2.0
-    assert sum(row["win_champ"] for row in out) == 1.0
+    assert sum(row["win_champ"] for row in out) == pytest.approx(1.0, abs=1e-6)
 
 
 def test_shl_records_ignore_playoff_games():
