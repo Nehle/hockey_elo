@@ -15,13 +15,13 @@ SIM_RESULTS_SCHEMA_VERSION = "2026-03-17-placement-k-v1"
 
 # Initialize session state for parameters
 if 'k_factor' not in st.session_state:
-    st.session_state.k_factor = 32.0
+    st.session_state.k_factor = 20.0
 if 'placement_games' not in st.session_state:
-    st.session_state.placement_games = 0
+    st.session_state.placement_games = 10
 if 'placement_k_add' not in st.session_state:
-    st.session_state.placement_k_add = 0.0
+    st.session_state.placement_k_add = 10.0
 if 'home_ice_advantage' not in st.session_state:
-    st.session_state.home_ice_advantage = 33.0
+    st.session_state.home_ice_advantage = 42.0
 if 'ot_win_weight' not in st.session_state:
     st.session_state.ot_win_weight = 0.67
 if 'so_win_weight' not in st.session_state:

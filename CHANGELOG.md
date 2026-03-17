@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.1] - 2026-03-17
+
+### Changed
+
+- Updated default Elo tuning values in app and CLI:
+	- Base K: 20
+	- Placement Games: 10
+	- Placement K Add: 10
+	- Home Ice Advantage: 42
+
 ## [0.3.0] - 2026-03-17
 
 ### Added

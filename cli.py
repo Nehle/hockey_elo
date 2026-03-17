@@ -80,14 +80,14 @@ def main():
     parser.add_argument("--league", default="NHL", help="League to simulate (NHL)")
     parser.add_argument("--season", default="20252026", help="Season string")
     parser.add_argument("--sims", type=int, default=1000, help="Number of Monte Carlo simulations")
-    parser.add_argument("--placement-games", type=int, default=0, help="Games per team using boosted placement K")
-    parser.add_argument("--placement-k-add", type=float, default=0.0, help="Additive K boost during placement games")
+    parser.add_argument("--placement-games", type=int, default=10, help="Games per team using boosted placement K")
+    parser.add_argument("--placement-k-add", type=float, default=10.0, help="Additive K boost during placement games")
     args = parser.parse_args()
 
     # Configuration defaults
     initial_elo = 1500.0
     k_factor = 20.0
-    home_ice_advantage = 33.0
+    home_ice_advantage = 42.0
     win_weights = {
         'REG_WIN': 1.00, 'REG_LOSS': 0.00,
         'OT_WIN': 0.67, 'OT_LOSS': 0.33,
