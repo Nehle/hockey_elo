@@ -422,7 +422,7 @@ class NHLLeague(BaseLeague):
         return {
             'make_playoffs': 'Make Playoffs',
             'make_qf': 'Round 2',
-            'make_sf': 'Conf Finals',
-            'make_final': 'Cup Finals',
-            'win_champ': 'Win Cup'
+            'make_sf': 'Conference Finals',
+            'make_final': 'Stanley Cup Finals',
+            'win_champ': 'Win Championship'
         }

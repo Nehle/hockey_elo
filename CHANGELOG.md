@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.2] - 2026-03-17
+
+### Added
+
+- New in-app `Help` tab with quick-start guidance, glossary, tab explanations, and league-specific playoff terminology
+- Inline help text/tooltips for key controls and simulation columns to improve first-time user onboarding
+
+### Changed
+
+- Standardized and clarified UI terminology across the dashboard for consistency (ratings, simulations, cutoff mode, and matrix language)
+- Updated NHL and SHL playoff stage labels for clearer interpretation (SHL retains Swedish terms with English clarifiers)
+- Expanded `README.md` with aligned terminology and practical documentation for tabs, parameters, what-if mode, and simulation outputs
+
 ## [0.3.1] - 2026-03-17
 
 ### Changed

@@ -159,11 +159,11 @@ class SHLLeague(BaseLeague):
 
     def get_playoff_column_names(self):
         return {
-            'make_playoffs': 'Åttondelsfinal',
-            'make_qf': 'Kvartsfinal',
-            'make_sf': 'Semifinal',
-            'make_final': 'Final',
-            'win_champ': 'Winner'
+            'make_playoffs': 'Åttondelsfinal (Play-in)',
+            'make_qf': 'Kvartsfinal (Quarterfinals)',
+            'make_sf': 'Semifinal (Semifinals)',
+            'make_final': 'Final (Finals)',
+            'win_champ': 'Mästare (Champion)'
         }
 
     def simulate_playoffs(self, records: list, ratings: dict, simulations: int, rng, **kwargs) -> list:

@@ -4,15 +4,67 @@ Elo ratings, standings analytics, and playoff probability simulations for NHL an
 
 ## Features
 
-- Historical Elo calculation with configurable:
-  - Initial Elo
-  - K-factor
-  - Home-ice advantage
+- Historical ELO calculation with configurable:
+  - K-Factor
+  - Home Ice Advantage
   - OT/SO score weights
+- Placement-phase K controls for early-season volatility:
+  - Placement Games
+  - Placement K Add (bonus added to base K)
 - Optional Margin of Victory (MoV) multiplier with configurable goal-differential cap
 - Streamlit dashboard for interactive analysis
 - CLI workflow for batch exports and image reports
+- Date-cutoff what-if mode for historical snapshots
+- Home-ice estimator calibrated from historical games
 - League-specific playoff simulation structures (NHL and SHL)
+
+## Dashboard Guide
+
+### Tabs at a Glance
+
+- Current Ratings: Compare ELO rank, standings rank, trend, and records.
+- ELO History: Team ELO trajectories over time.
+- ELO vs Standings: Visual alignment between standings and ELO rank.
+- Simulations: Expected final points and playoff/championship probabilities.
+- Interdivision Matrix: Division-vs-division ELO-style score percentages.
+- Help: Built-in glossary and usage guidance for first-time users.
+
+### Core Terms
+
+- ELO: Rating system updated after each game.
+- K-Factor: How quickly ratings move; higher means more reactive ratings.
+- Placement Games / Placement K Add: Early-season K bonus. If either team is still in placement games, that matchup uses base K + bonus.
+- Home Ice Advantage (ELO points): Rating bonus applied to the home team for win-probability calculations.
+- OTW/SOW Weights: How ELO credit is split for overtime/shootout games.
+- MoV Multiplier: Optional goal-differential scaling for regular-season ELO updates.
+
+### Simulations Output
+
+- Expected Final Points: Average regular-season points across simulation runs.
+- Playoff columns: Probability of reaching each stage.
+- SHL labels keep Swedish names with English clarifiers.
+
+### What-If Mode (Date Cutoff)
+
+Enable Historical Data Cutoff in the sidebar to freeze ratings/analytics at a selected date.
+Simulations then run only on games after that date.
+
+### Home-Ice Estimator
+
+Use Estimate Home Ice From Data in the sidebar to calibrate the Home Ice Advantage value from completed games.
+The app updates the slider using the value that best fits observed outcomes.
+
+## Playoff Structures
+
+### NHL
+
+- Standard NHL bracket progression ending in Stanley Cup Finals.
+
+### SHL
+
+- Top 6 teams go directly to Kvartsfinal (Quarterfinals).
+- Seeds 7-10 play Åttondelsfinal (Play-in).
+- Bracket reseeds by highest remaining seed vs lowest remaining seed each round.
 
 ## Quickstart
 
