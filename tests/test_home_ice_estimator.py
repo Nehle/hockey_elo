@@ -2,6 +2,7 @@ import pytest
 
 from src.core.league import BaseLeague
 from src.core.models import GameResult
+import src.tools.analytics as analytics_mod
 from src.tools.analytics import estimate_home_ice_advantage
 
 
@@ -136,3 +137,56 @@ def test_estimate_home_ice_advantage_raises_on_empty_games():
             initial_elo=1500.0,
             k_factor=20.0,
         )
+
+
+def test_estimate_home_ice_advantage_applies_placement_k_boost(monkeypatch):
+    league = DummyLeague()
+    win_weights = {
+        "REG_WIN": 1.0,
+        "REG_LOSS": 0.0,
+        "OT_WIN": 0.67,
+        "OT_LOSS": 0.33,
+        "SO_WIN": 0.55,
+        "SO_LOSS": 0.45,
+    }
+    games = [
+        make_game(1, home_wins=True),
+        make_game(2, home_wins=False),
+    ]
+
+    captured_k = []
+
+    def fake_update_elo(
+        away_elo,
+        home_elo,
+        away_actual,
+        home_actual,
+        k,
+        home_ice_advantage,
+        use_mov=False,
+        mov_cap=5,
+        away_goals=0,
+        home_goals=0,
+    ):
+        captured_k.append(k)
+        return away_elo, home_elo
+
+    monkeypatch.setattr(analytics_mod, "update_elo", fake_update_elo)
+
+    estimate_home_ice_advantage(
+        league=league,
+        games=games,
+        win_weights=win_weights,
+        initial_elo=1500.0,
+        k_factor=20.0,
+        placement_games=1,
+        placement_k_add=10.0,
+        search_min=0.0,
+        search_max=0.0,
+        coarse_step=5.0,
+        fine_window=0.0,
+        fine_step=1.0,
+    )
+
+    # Two _home_ice_mse evaluations run (coarse + fine), each over two games.
+    assert captured_k[:2] == [30.0, 20.0]

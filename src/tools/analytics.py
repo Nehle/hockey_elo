@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple
 from src.core.models import GameResult
 from src.core.league import BaseLeague
-from src.core.elo import build_elo_rankings, expected_score, update_elo
+from src.core.elo import build_elo_rankings, expected_score, update_elo, placement_adjusted_k
 
 
 def _float_range(start: float, stop: float, step: float) -> List[float]:
@@ -22,9 +22,12 @@ def _home_ice_mse(
     home_ice_advantage: float,
     use_mov: bool,
     mov_cap: int,
+    placement_games: int,
+    placement_k_add: float,
 ) -> float:
     teams = list(league.get_teams())
     ratings = {team: initial_elo for team in teams}
+    games_played = {team: 0 for team in teams}
     ordered_games = league.sort_games_by_date(games)
 
     total_error = 0.0
@@ -33,11 +36,22 @@ def _home_ice_mse(
     for game in ordered_games:
         if game.away_team not in ratings:
             ratings[game.away_team] = initial_elo
+            games_played[game.away_team] = 0
         if game.home_team not in ratings:
             ratings[game.home_team] = initial_elo
+            games_played[game.home_team] = 0
 
         away_before = ratings[game.away_team]
         home_before = ratings[game.home_team]
+        away_gp_before = games_played[game.away_team]
+        home_gp_before = games_played[game.home_team]
+        effective_k = placement_adjusted_k(
+            k_factor,
+            away_gp_before,
+            home_gp_before,
+            placement_games,
+            placement_k_add,
+        )
         away_actual, home_actual = league.actual_scores(game, win_weights)
 
         home_expected = expected_score(home_before + home_ice_advantage, away_before)
@@ -49,7 +63,7 @@ def _home_ice_mse(
             home_before,
             away_actual,
             home_actual,
-            k=k_factor,
+            k=effective_k,
             home_ice_advantage=home_ice_advantage,
             use_mov=use_mov,
             mov_cap=mov_cap,
@@ -58,6 +72,8 @@ def _home_ice_mse(
         )
         ratings[game.away_team] = away_after
         ratings[game.home_team] = home_after
+        games_played[game.away_team] += 1
+        games_played[game.home_team] += 1
 
     if game_count == 0:
         return float("inf")
@@ -72,6 +88,8 @@ def estimate_home_ice_advantage(
     k_factor: float,
     use_mov: bool = False,
     mov_cap: int = 5,
+    placement_games: int = 0,
+    placement_k_add: float = 0.0,
     search_min: float = 0.0,
     search_max: float = 200.0,
     coarse_step: float = 5.0,
@@ -95,6 +113,8 @@ def estimate_home_ice_advantage(
             candidate,
             use_mov,
             mov_cap,
+            placement_games,
+            placement_k_add,
         )
         if loss < best_coarse_loss:
             best_coarse_loss = loss
@@ -116,6 +136,8 @@ def estimate_home_ice_advantage(
             candidate,
             use_mov,
             mov_cap,
+            placement_games,
+            placement_k_add,
         )
         if loss < best_fine_loss:
             best_fine_loss = loss

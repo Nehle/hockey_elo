@@ -1,6 +1,7 @@
 from src.core.elo import calculate_elo, expected_score, update_elo
 from src.core.league import BaseLeague
 from src.core.models import GameResult
+import src.core.elo as elo_mod
 
 
 class DummyLeague(BaseLeague):
@@ -149,3 +150,65 @@ def test_calculate_elo_responds_to_mov_toggle():
     )
 
     assert ratings_mov["B"] > ratings_plain["B"]
+
+
+def test_calculate_elo_placement_k_boost_uses_or_rule_and_expires(monkeypatch):
+    class PlacementLeague(DummyLeague):
+        def __init__(self):
+            self._teams = ["A", "B", "C"]
+
+        def team_info(self):
+            return {
+                "A": {"conference": "Test", "division": "One"},
+                "B": {"conference": "Test", "division": "One"},
+                "C": {"conference": "Test", "division": "One"},
+            }
+
+    captured_k = []
+
+    def fake_update_elo(
+        away_elo,
+        home_elo,
+        away_actual,
+        home_actual,
+        k,
+        home_ice_advantage,
+        use_mov=False,
+        mov_cap=5,
+        away_goals=0,
+        home_goals=0,
+    ):
+        captured_k.append(k)
+        return away_elo, home_elo
+
+    monkeypatch.setattr(elo_mod, "update_elo", fake_update_elo)
+
+    league = PlacementLeague()
+    weights = {
+        "REG_WIN": 1.0,
+        "REG_LOSS": 0.0,
+        "OT_WIN": 0.67,
+        "OT_LOSS": 0.33,
+        "SO_WIN": 0.55,
+        "SO_LOSS": 0.45,
+    }
+    games = [
+        GameResult("g1", "2026-03-01", "A", "B", 3, 1, "REG"),
+        GameResult("g2", "2026-03-02", "A", "B", 2, 1, "REG"),
+        GameResult("g3", "2026-03-03", "A", "C", 2, 1, "REG"),
+        GameResult("g4", "2026-03-04", "B", "C", 2, 1, "REG"),
+        GameResult("g5", "2026-03-05", "A", "C", 2, 1, "REG"),
+    ]
+
+    calculate_elo(
+        league=league,
+        games=games,
+        initial_elo=1500.0,
+        k_factor=20.0,
+        home_ice_advantage=0.0,
+        win_weights=weights,
+        placement_games=2,
+        placement_k_add=30.0,
+    )
+
+    assert captured_k == [50.0, 50.0, 50.0, 50.0, 20.0]

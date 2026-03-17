@@ -2,7 +2,7 @@ import random
 from typing import List, Dict, Tuple
 from src.core.models import GameResult
 from src.core.league import BaseLeague
-from src.core.elo import expected_score, update_elo
+from src.core.elo import expected_score, update_elo, placement_adjusted_k
 
 def sample_finish_type(finish_probs: Dict[str, float], rng: random.Random) -> str:
     x = rng.random()
@@ -49,7 +49,9 @@ def simulate_season_and_playoffs_from_today(
     win_weights: dict,
     seed: int = 42,
     use_mov: bool = False,
-    mov_cap: int = 5
+    mov_cap: int = 5,
+    placement_games: int = 0,
+    placement_k_add: float = 0.0,
 ) -> List[dict]:
     rng = random.Random(seed)
     finish_probs = league.estimate_finish_type_probabilities(completed_games)
@@ -79,9 +81,18 @@ def simulate_season_and_playoffs_from_today(
             (away_team, home_team, away_score, home_score, finish_type, away_actual, home_actual) = simulate_future_game(
                 league, game, ratings, finish_probs, rng, home_ice_advantage, win_weights
             )
+            away_gp_before = int(records.get(away_team, {}).get("GP", 0))
+            home_gp_before = int(records.get(home_team, {}).get("GP", 0))
+            effective_k = placement_adjusted_k(
+                k_factor,
+                away_gp_before,
+                home_gp_before,
+                placement_games,
+                placement_k_add,
+            )
             away_after, home_after = update_elo(
                 ratings[away_team], ratings[home_team], 
-                away_actual, home_actual, k_factor, home_ice_advantage,
+                away_actual, home_actual, effective_k, home_ice_advantage,
                 use_mov=use_mov, mov_cap=mov_cap,
                 away_goals=away_score, home_goals=home_score
             )

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0] - 2026-03-17
+
+### Added
+
+- Placement-phase K controls in the Streamlit app: `Placement Games` and `Placement K Add`
+- CLI flags for placement-phase K tuning: `--placement-games` and `--placement-k-add`
+- Placement-K regression coverage across historical Elo, simulation path, and home-ice estimator path
+
+### Changed
+
+- Elo updates now support a per-match placement boost rule: if either team is still within its first X games, the game uses `base_k + placement_k_add`
+- Season simulations now apply the same placement-K rule to regular-season simulated games
+- Home-ice estimator calibration now uses the same placement-K rule for consistency with ratings and simulations
+- Streamlit simulation cache schema bumped to avoid stale cache collisions with placement-K-enhanced results
+
 ## [0.2.5] - 2026-03-16
 
 ### Added

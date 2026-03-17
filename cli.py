@@ -80,6 +80,8 @@ def main():
     parser.add_argument("--league", default="NHL", help="League to simulate (NHL)")
     parser.add_argument("--season", default="20252026", help="Season string")
     parser.add_argument("--sims", type=int, default=1000, help="Number of Monte Carlo simulations")
+    parser.add_argument("--placement-games", type=int, default=0, help="Games per team using boosted placement K")
+    parser.add_argument("--placement-k-add", type=float, default=0.0, help="Additive K boost during placement games")
     args = parser.parse_args()
 
     # Configuration defaults
@@ -102,7 +104,16 @@ def main():
     completed, remaining = league.fetch_games(args.season)
 
     print("Calculating Elo...")
-    ratings, history, team_history = calculate_elo(league, completed, initial_elo, k_factor, home_ice_advantage, win_weights)
+    ratings, history, team_history = calculate_elo(
+        league,
+        completed,
+        initial_elo,
+        k_factor,
+        home_ice_advantage,
+        win_weights,
+        placement_games=args.placement_games,
+        placement_k_add=args.placement_k_add,
+    )
     
     print("Generating Analytics...")
     comparison = compare_elo_vs_standings(league, ratings, completed, team_history)
@@ -114,7 +125,9 @@ def main():
         simulations=args.sims,
         home_ice_advantage=home_ice_advantage,
         k_factor=k_factor,
-        win_weights=win_weights
+        win_weights=win_weights,
+        placement_games=args.placement_games,
+        placement_k_add=args.placement_k_add,
     )
 
     print("Saving artifacts...")

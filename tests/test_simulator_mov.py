@@ -156,3 +156,60 @@ def test_simulator_skips_non_regular_remaining_games(monkeypatch):
 
     assert len(result) == 2
     assert calls == []
+
+
+def test_simulator_applies_placement_k_when_one_team_still_in_phase(monkeypatch):
+    league = TrackingLeague()
+    calls = []
+
+    def build_records_with_mixed_gp(_games):
+        return [
+            {"team": "A", "Pts": 10, "GP": 3},
+            {"team": "B", "Pts": 8, "GP": 0},
+        ]
+
+    def fake_update_elo(
+        away_elo,
+        home_elo,
+        away_actual,
+        home_actual,
+        k,
+        home_ice_advantage,
+        use_mov=False,
+        mov_cap=5,
+        away_goals=0,
+        home_goals=0,
+    ):
+        calls.append({"k": k})
+        return away_elo, home_elo
+
+    monkeypatch.setattr(league, "build_team_records", build_records_with_mixed_gp)
+    monkeypatch.setattr(simulator_mod, "update_elo", fake_update_elo)
+
+    game = GameResult(
+        game_id="future-placement-1",
+        game_date="2026-03-21",
+        away_team="A",
+        home_team="B",
+        away_score=0,
+        home_score=0,
+        last_period_type="REG",
+        game_type="REG",
+    )
+
+    simulator_mod.simulate_season_and_playoffs_from_today(
+        league=league,
+        completed_games=[],
+        remaining_games=[game],
+        current_ratings={"A": 1500.0, "B": 1500.0},
+        simulations=1,
+        home_ice_advantage=33.0,
+        k_factor=20.0,
+        win_weights={"REG_WIN": 1.0, "REG_LOSS": 0.0, "OT_WIN": 0.67, "OT_LOSS": 0.33, "SO_WIN": 0.55, "SO_LOSS": 0.45},
+        placement_games=2,
+        placement_k_add=15.0,
+        seed=7,
+    )
+
+    assert calls
+    assert calls[0]["k"] == 35.0

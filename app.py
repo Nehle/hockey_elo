@@ -11,11 +11,15 @@ from src.tools.analytics import compare_elo_vs_standings, build_interdivision_ma
 from src.tools.simulator import simulate_season_and_playoffs_from_today
 
 BASE_ELO = 1000.0
-SIM_RESULTS_SCHEMA_VERSION = "2026-03-16-final-points-v2"
+SIM_RESULTS_SCHEMA_VERSION = "2026-03-17-placement-k-v1"
 
 # Initialize session state for parameters
 if 'k_factor' not in st.session_state:
     st.session_state.k_factor = 32.0
+if 'placement_games' not in st.session_state:
+    st.session_state.placement_games = 0
+if 'placement_k_add' not in st.session_state:
+    st.session_state.placement_k_add = 0.0
 if 'home_ice_advantage' not in st.session_state:
     st.session_state.home_ice_advantage = 33.0
 if 'ot_win_weight' not in st.session_state:
@@ -67,6 +71,8 @@ SEASON_SELECT = available_seasons[season_label]
 st.sidebar.header("ELO Parameters")
 st.sidebar.caption(f"Base ELO: {BASE_ELO:.0f} (fixed)")
 st.sidebar.slider("K-Factor", min_value=1.0, max_value=100.0, step=1.0, key="k_factor")
+st.sidebar.slider("Placement Games", min_value=0, max_value=30, step=1, key="placement_games")
+st.sidebar.slider("Placement K Add", min_value=0.0, max_value=100.0, step=1.0, key="placement_k_add")
 st.sidebar.slider("Home Ice Advantage", min_value=0.0, max_value=200.0, step=1.0, key="home_ice_advantage")
 estimate_home_ice_btn = st.sidebar.button("Estimate Home Ice From Data")
 if st.session_state.home_ice_estimate_notice:
@@ -90,7 +96,20 @@ def fetch_game_data(season):
     return completed, remaining, league.get_teams(), league.team_info()
 
 @st.cache_data(ttl=3600)
-def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, use_mov, mov_cap, league_name, season_id, cutoff_date_key):
+def compute_ratings(
+    _completed_games,
+    k_factor,
+    placement_games,
+    placement_k_add,
+    home_ice,
+    ot_win,
+    so_win,
+    use_mov,
+    mov_cap,
+    league_name,
+    season_id,
+    cutoff_date_key,
+):
     win_weights = {
         'REG_WIN': 1.0, 'REG_LOSS': 0.0,
         'OT_WIN': ot_win, 'OT_LOSS': 1.0 - ot_win,
@@ -99,7 +118,9 @@ def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, use_mo
     
     ratings, history, team_history = calculate_elo(
         league, _completed_games, BASE_ELO,
-        k_factor, home_ice, win_weights, use_mov, mov_cap
+        k_factor, home_ice, win_weights, use_mov, mov_cap,
+        placement_games=placement_games,
+        placement_k_add=placement_k_add,
     )
     comparison = compare_elo_vs_standings(league, ratings, _completed_games, team_history)
     records = league.build_team_records(_completed_games)
@@ -107,7 +128,24 @@ def compute_ratings(_completed_games, k_factor, home_ice, ot_win, so_win, use_mo
     return ratings, history, team_history, comparison, records, divisions, interdivision_rows
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win, so_win, use_mov, mov_cap, season_id, league_id, cutoff_date_key, sim_schema_version):
+def get_sim_results(
+    _completed,
+    _remaining,
+    ratings_dict,
+    count,
+    k,
+    placement_games,
+    placement_k_add,
+    home,
+    ot_win,
+    so_win,
+    use_mov,
+    mov_cap,
+    season_id,
+    league_id,
+    cutoff_date_key,
+    sim_schema_version,
+):
     sim_logic_version = "2026-03-16-shl-playoff-hardcode-v1"
     ww = {
         'REG_WIN': 1.0, 'REG_LOSS': 0.0,
@@ -117,7 +155,9 @@ def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win
     return simulate_season_and_playoffs_from_today(
         league, _completed, _remaining, ratings_dict, count,
         home_ice_advantage=home, k_factor=k, win_weights=ww,
-        use_mov=use_mov, mov_cap=mov_cap
+        use_mov=use_mov, mov_cap=mov_cap,
+        placement_games=placement_games,
+        placement_k_add=placement_k_add,
     )
 
 
@@ -125,6 +165,8 @@ def get_sim_results(_completed, _remaining, ratings_dict, count, k, home, ot_win
 def estimate_home_ice_value(
     _completed_games,
     k_factor,
+    placement_games,
+    placement_k_add,
     ot_win,
     so_win,
     use_mov,
@@ -146,6 +188,8 @@ def estimate_home_ice_value(
         k_factor=k_factor,
         use_mov=use_mov,
         mov_cap=mov_cap,
+        placement_games=placement_games,
+        placement_k_add=placement_k_add,
     )
     return estimated, objective
 
@@ -214,6 +258,8 @@ if estimate_home_ice_btn:
             estimated_home_ice, objective = estimate_home_ice_value(
                 completed_games_for_elo,
                 st.session_state.k_factor,
+                st.session_state.placement_games,
+                st.session_state.placement_k_add,
                 st.session_state.ot_win_weight,
                 st.session_state.so_win_weight,
                 st.session_state.use_mov,
@@ -233,6 +279,8 @@ if estimate_home_ice_btn:
 ratings, history, team_history, comparison, records, divisions, interdivision_rows = compute_ratings(
     completed_games_for_elo,
     st.session_state.k_factor,
+    st.session_state.placement_games,
+    st.session_state.placement_k_add,
     st.session_state.home_ice_advantage,
     st.session_state.ot_win_weight,
     st.session_state.so_win_weight,
@@ -358,7 +406,8 @@ with tab4:
             with st.spinner(f"Running {st.session_state.num_simulations} simulations..."):
                 results = get_sim_results(
                     completed_games_for_elo, sim_games_from_cutoff, ratings, st.session_state.num_simulations,
-                    st.session_state.k_factor, st.session_state.home_ice_advantage,
+                    st.session_state.k_factor, st.session_state.placement_games, st.session_state.placement_k_add,
+                    st.session_state.home_ice_advantage,
                     st.session_state.ot_win_weight, st.session_state.so_win_weight,
                     st.session_state.use_mov, st.session_state.mov_cap,
                     SEASON_SELECT, st.session_state.league_choice, cutoff_date_key, SIM_RESULTS_SCHEMA_VERSION

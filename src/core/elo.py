@@ -6,6 +6,20 @@ from .league import BaseLeague
 def expected_score(rating_a: float, rating_b: float) -> float:
     return 1.0 / (1.0 + 10 ** ((rating_b - rating_a) / 400.0))
 
+
+def placement_adjusted_k(
+    base_k: float,
+    away_games_played: int,
+    home_games_played: int,
+    placement_games: int = 0,
+    placement_k_add: float = 0.0,
+) -> float:
+    if placement_games <= 0 or placement_k_add <= 0.0:
+        return base_k
+    if away_games_played < placement_games or home_games_played < placement_games:
+        return base_k + placement_k_add
+    return base_k
+
 def update_elo(
     away_elo: float,
     home_elo: float,
@@ -41,7 +55,9 @@ def calculate_elo(
     home_ice_advantage: float,
     win_weights: dict,
     use_mov: bool = False,
-    mov_cap: int = 5
+    mov_cap: int = 5,
+    placement_games: int = 0,
+    placement_k_add: float = 0.0,
 ) -> Tuple[Dict[str, float], List[dict], Dict[str, List[Tuple[str, float]]]]:
     teams = league.get_teams()
     ratings = {team: initial_elo for team in teams}
@@ -53,6 +69,15 @@ def calculate_elo(
     for game in games:
         away_before = ratings[game.away_team]
         home_before = ratings[game.home_team]
+        away_gp_before = len(team_history[game.away_team]) - 1
+        home_gp_before = len(team_history[game.home_team]) - 1
+        effective_k = placement_adjusted_k(
+            k_factor,
+            away_gp_before,
+            home_gp_before,
+            placement_games,
+            placement_k_add,
+        )
 
         away_actual, home_actual = league.actual_scores(game, win_weights)
         away_after, home_after = update_elo(
@@ -60,7 +85,7 @@ def calculate_elo(
             home_before,
             away_actual,
             home_actual,
-            k=k_factor,
+            k=effective_k,
             home_ice_advantage=home_ice_advantage,
             use_mov=use_mov,
             mov_cap=mov_cap,
