@@ -50,9 +50,9 @@ if st.session_state.pending_home_ice_advantage is not None:
     st.session_state.home_ice_advantage = st.session_state.pending_home_ice_advantage
     st.session_state.pending_home_ice_advantage = None
 
-st.set_page_config(page_title="Hockey ELO Ratings", layout="wide")
+st.set_page_config(page_title="Hockey Elo Ratings", layout="wide")
 
-st.title("Hockey ELO Ratings & Dashboard")
+st.title("Hockey Elo Ratings & Dashboard")
 
 # Sidebar for parameters
 st.sidebar.header("Data Source")
@@ -69,8 +69,8 @@ season_labels = list(available_seasons.keys())
 season_label = st.sidebar.selectbox("Season", season_labels, index=0)
 SEASON_SELECT = available_seasons[season_label]
 
-st.sidebar.header("ELO Parameters")
-st.sidebar.caption(f"Base ELO: {BASE_ELO:.0f} (fixed)")
+st.sidebar.header("Elo Parameters")
+st.sidebar.caption(f"Base Elo: {BASE_ELO:.0f} (fixed)")
 st.sidebar.slider(
     "K-Factor",
     min_value=1.0,
@@ -96,7 +96,7 @@ st.sidebar.slider(
     help="Added on top of base K during placement games. If either team is still in placement, the bonus applies.",
 )
 st.sidebar.slider(
-    "Home Ice Advantage (ELO Points)",
+    "Home Ice Advantage (Elo Points)",
     min_value=0.0,
     max_value=200.0,
     step=1.0,
@@ -109,14 +109,14 @@ if st.session_state.home_ice_estimate_notice:
     st.session_state.home_ice_estimate_notice = ""
 
 st.sidebar.header("Game Type Weights")
-st.sidebar.markdown("Define how much ELO credit the winner receives (loser gets 1 - weight). 1.0 = winner takes all, 0.5 = equal split.")
+st.sidebar.markdown("Define how much Elo credit the winner receives (loser gets 1 - weight). 1.0 = winner takes all, 0.5 = equal split.")
 st.sidebar.slider(
     "Overtime Win (OTW) Weight",
     min_value=0.5,
     max_value=1.0,
     step=0.01,
     key="ot_win_weight",
-    help="ELO share for the overtime winner.",
+    help="Elo share for the overtime winner.",
 )
 st.sidebar.slider(
     "Shootout Win (SOW) Weight",
@@ -124,11 +124,11 @@ st.sidebar.slider(
     max_value=1.0,
     step=0.01,
     key="so_win_weight",
-    help="ELO share for the shootout winner.",
+    help="Elo share for the shootout winner.",
 )
 
 st.sidebar.header("Margin of Victory")
-st.sidebar.markdown("Optional multiplier based on goal differential. This affects regular-season ELO updates only.")
+st.sidebar.markdown("Optional multiplier based on goal differential. This affects regular-season Elo updates only.")
 st.sidebar.toggle("Enable Margin of Victory (MoV) Multiplier", key="use_mov")
 st.sidebar.slider(
     "MoV Goal Differential Cap",
@@ -282,7 +282,7 @@ st.sidebar.toggle(
     help="Freeze ratings/analytics at a chosen date, then simulate only games after that date.",
 )
 st.sidebar.date_input(
-    "Calculate ELO Through",
+    "Calculate Elo Through",
     min_value=completed_dates[0],
     max_value=latest_completed_date,
     key="elo_cutoff_date",
@@ -299,7 +299,7 @@ if selected_cutoff_date is not None:
     completed_games_for_elo, completed_after_cutoff = league.split_games_by_cutoff(completed_games, selected_cutoff_date)
     sim_games_from_cutoff = league.sort_games_by_date(completed_after_cutoff + remaining_games)
     st.sidebar.caption(
-        f"Using games through {cutoff_date_key} for ELO/analytics. Simulations run after that date."
+        f"Using games through {cutoff_date_key} for Elo/analytics. Simulations run after that date."
     )
 
 if estimate_home_ice_btn:
@@ -356,8 +356,8 @@ if selected_cutoff_date is not None:
 # Tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Current Ratings",
-    "ELO History",
-    "ELO vs Standings",
+    "Elo History",
+    "Elo vs Standings",
     "Simulations",
     "Interdivision Matrix",
     "Help",
@@ -369,9 +369,9 @@ with tab1:
     df = pd.DataFrame(comparison)
     display_cols = ['elo_rank', 'standings_rank', 'rank_diff', 'team', 'conference', 'division', 'elo', 'elo_trend_10g', 'Pts', 'GP', 'W', 'OTW', 'L', 'OTL']
     col_names = {
-        'elo_rank': 'ELO Rank', 'standings_rank': 'Standings Rank', 'rank_diff': 'ELO vs Standings',
+        'elo_rank': 'Elo Rank', 'standings_rank': 'Standings Rank', 'rank_diff': 'Elo vs Standings',
         'team': 'Team', 'conference': 'Conference', 'division': 'Division',
-        'elo': 'ELO', 'elo_trend_10g': 'ELO Trend (Last 10 Games)', 'Pts': 'Points', 'OTW': 'OTW'
+        'elo': 'Elo', 'elo_trend_10g': 'Elo Trend (Last 10 Games)', 'Pts': 'Points', 'OTW': 'OTW'
     }
 
     df_display = df[display_cols].rename(columns=col_names)
@@ -380,22 +380,22 @@ with tab1:
         width="stretch",
         hide_index=True,
         column_config={
-            "ELO vs Standings": st.column_config.NumberColumn(
-                "ELO vs Standings",
+            "Elo vs Standings": st.column_config.NumberColumn(
+                "Elo vs Standings",
                 format="%d",
-                help="Standings rank minus ELO rank. Positive means ELO rates the team stronger than the standings do.",
+                help="Standings rank minus Elo rank. Positive means Elo rates the team stronger than the standings do.",
             ),
-            "ELO Trend (Last 10 Games)": st.column_config.NumberColumn(
-                "ELO Trend (Last 10 Games)",
+            "Elo Trend (Last 10 Games)": st.column_config.NumberColumn(
+                "Elo Trend (Last 10 Games)",
                 format="%+.1f",
-                help="Current ELO minus ELO from 10 games ago. Positive = improving trend.",
+                help="Current Elo minus Elo from 10 games ago. Positive = improving trend.",
             )
         },
     )
 
 with tab2:
-    st.subheader("ELO Rating History")
-    st.caption("Track how each team's ELO changes as games are played.")
+    st.subheader("Elo Rating History")
+    st.caption("Track how each team's Elo changes as games are played.")
     
     ranked_teams = [t for r, t, e in build_elo_rankings(ratings)]
     selected_teams = st.multiselect("Select teams to plot:", options=sorted(ranked_teams), default=ranked_teams[:5])
@@ -418,17 +418,17 @@ with tab2:
             fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', name=team))
             
         fig.update_layout(
-            title="Team ELO Trajectories",
+            title="Team Elo Trajectories",
             xaxis_title="Games Played",
-            yaxis_title="ELO Rating",
+            yaxis_title="Elo Rating",
             height=600,
             hovermode="x unified"
         )
         st.plotly_chart(fig, width="stretch")
 
 with tab3:
-    st.subheader("ELO Rank vs Standings Rank")
-    st.caption("The dashed line shows perfect agreement between standings and ELO rankings.")
+    st.subheader("Elo Rank vs Standings Rank")
+    st.caption("The dashed line shows perfect agreement between standings and Elo rankings.")
     
     df = pd.DataFrame(comparison)
     
@@ -439,7 +439,7 @@ with tab3:
         text="team",
         hover_data=["elo", "Pts"],
         color="conference",
-        title="Standings Rank vs ELO Rank"
+        title="Standings Rank vs Elo Rank"
     )
     
     fig.add_trace(go.Scatter(
@@ -449,7 +449,7 @@ with tab3:
     fig.update_traces(textposition='top center')
     fig.update_layout(
         xaxis_title="Standings Rank", 
-        yaxis_title="ELO Rank",
+        yaxis_title="Elo Rank",
         height=600,
         xaxis=dict(autorange="reversed"),
         yaxis=dict(autorange="reversed")
@@ -507,7 +507,7 @@ with tab4:
                 ]
             
                 rename_cols = {
-                    'team': 'Team', 'conference': 'Conference', 'division': 'Division', 'current_elo': 'Current ELO', 'final_points_avg': 'Expected Final Points',
+                    'team': 'Team', 'conference': 'Conference', 'division': 'Division', 'current_elo': 'Current Elo', 'final_points_avg': 'Expected Final Points',
                     'make_playoffs_prob': playoff_cols_dict.get('make_playoffs', 'Make Playoffs'), 
                     'make_qf_prob': playoff_cols_dict.get('make_qf', 'Round 2'),
                     'make_sf_prob': playoff_cols_dict.get('make_sf', 'Conf Finals'), 
@@ -529,7 +529,7 @@ with tab4:
                     df_display[column] = df_display[column] * 100.0
 
                 sim_col_config = {
-                    "Current ELO": st.column_config.NumberColumn("Current ELO", format="%.2f"),
+                    "Current Elo": st.column_config.NumberColumn("Current Elo", format="%.2f"),
                     "Expected Final Points": st.column_config.NumberColumn(
                         "Expected Final Points",
                         format="%.2f",
@@ -564,7 +564,7 @@ with tab4:
 with tab5:
     st.subheader("Interdivisional Head-to-Head (%)")
     st.write("Rows are the division being evaluated; columns are opponent divisions.")
-    st.write("Values show average ELO-style game score percentages from completed games (100% = all regulation wins, 0% = all regulation losses).")
+    st.write("Values show average Elo-style game score percentages from completed games (100% = all regulation wins, 0% = all regulation losses).")
     
     matrix_data = []
     
@@ -596,26 +596,26 @@ with tab6:
     with st.expander("Quick Start", expanded=True):
         st.markdown("""
 1. Pick a **League** and **Season** in the sidebar.
-2. Review **Current Ratings** to compare ELO vs standings.
+2. Review **Current Ratings** to compare Elo vs standings.
 3. Run **Simulations** to estimate playoff and championship probabilities.
-4. Tune ELO settings in the sidebar only after a baseline run.
+4. Tune Elo settings in the sidebar only after a baseline run.
 """)
 
     with st.expander("Core Concepts"):
         st.markdown("""
-- **ELO**: A rating system that updates after each game.
+- **Elo**: A rating system that updates after each game.
 - **K-Factor**: How quickly ratings move. Higher K means faster movement.
 - **Placement Games / Placement K Add**: Early-season boost. If either team is still in placement games, base K gets the bonus.
-- **Home Ice Advantage**: ELO points added to the home team when computing win probability.
-- **OTW/SOW Weights**: How much ELO credit overtime and shootout winners receive.
-- **MoV Multiplier**: Optional margin-of-victory adjustment for regular-season ELO updates.
+- **Home Ice Advantage**: Elo points added to the home team when computing win probability.
+- **OTW/SOW Weights**: How much Elo credit overtime and shootout winners receive.
+- **MoV Multiplier**: Optional margin-of-victory adjustment for regular-season Elo updates.
 """)
 
     with st.expander("How To Read The Tabs"):
         st.markdown("""
-- **Current Ratings**: ELO rank, standings rank, and trend metrics.
-- **ELO History**: Team rating trajectories over games played.
-- **ELO vs Standings**: Visual alignment (or mismatch) between standings and ELO.
+- **Current Ratings**: Elo rank, standings rank, and trend metrics.
+- **Elo History**: Team rating trajectories over games played.
+- **Elo vs Standings**: Visual alignment (or mismatch) between standings and Elo.
 - **Simulations**: Expected final points and playoff/championship probabilities.
 - **Interdivision Matrix**: Division-vs-division scoring percentages from completed games.
 """)

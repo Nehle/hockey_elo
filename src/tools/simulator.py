@@ -105,7 +105,7 @@ def simulate_season_and_playoffs_from_today(
             results[team]["final_points_total"] += float(records.get(team, {}).get("Pts", 0.0))
 
         final_records_list = [r for r in records.values()]
-        # Then we call the playoff simulator for that specific league passing specific final_records_list and new ELO ratings
+        # Then we call the playoff simulator for that specific league passing specific final_records_list and new Elo ratings
         sim_stats = league.simulate_playoffs(final_records_list, ratings, 1, rng, home_ice_advantage=home_ice_advantage, use_mov=use_mov, mov_cap=mov_cap)
         for stat in sim_stats:
             team = stat['team']

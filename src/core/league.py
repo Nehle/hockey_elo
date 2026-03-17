@@ -20,7 +20,7 @@ class BaseLeague(ABC):
 
     @abstractmethod
     def actual_scores(self, game: GameResult, win_weights: dict) -> Tuple[float, float]:
-        """Calculates actual score updates for ELO given game results."""
+        """Calculates actual score updates for Elo given game results."""
         pass
 
     @abstractmethod

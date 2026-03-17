@@ -4,7 +4,7 @@ Elo ratings, standings analytics, and playoff probability simulations for NHL an
 
 ## Features
 
-- Historical ELO calculation with configurable:
+- Historical Elo calculation with configurable:
   - K-Factor
   - Home Ice Advantage
   - OT/SO score weights
@@ -22,21 +22,21 @@ Elo ratings, standings analytics, and playoff probability simulations for NHL an
 
 ### Tabs at a Glance
 
-- Current Ratings: Compare ELO rank, standings rank, trend, and records.
-- ELO History: Team ELO trajectories over time.
-- ELO vs Standings: Visual alignment between standings and ELO rank.
+- Current Ratings: Compare Elo rank, standings rank, trend, and records.
+- Elo History: Team Elo trajectories over time.
+- Elo vs Standings: Visual alignment between standings and Elo rank.
 - Simulations: Expected final points and playoff/championship probabilities.
-- Interdivision Matrix: Division-vs-division ELO-style score percentages.
+- Interdivision Matrix: Division-vs-division Elo-style score percentages.
 - Help: Built-in glossary and usage guidance for first-time users.
 
 ### Core Terms
 
-- ELO: Rating system updated after each game.
+- Elo: Rating system updated after each game.
 - K-Factor: How quickly ratings move; higher means more reactive ratings.
 - Placement Games / Placement K Add: Early-season K bonus. If either team is still in placement games, that matchup uses base K + bonus.
-- Home Ice Advantage (ELO points): Rating bonus applied to the home team for win-probability calculations.
-- OTW/SOW Weights: How ELO credit is split for overtime/shootout games.
-- MoV Multiplier: Optional goal-differential scaling for regular-season ELO updates.
+- Home Ice Advantage (Elo points): Rating bonus applied to the home team for win-probability calculations.
+- OTW/SOW Weights: How Elo credit is split for overtime/shootout games.
+- MoV Multiplier: Optional goal-differential scaling for regular-season Elo updates.
 
 ### Simulations Output
 

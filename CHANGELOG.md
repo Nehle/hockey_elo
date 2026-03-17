@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3] - 2026-03-17
+
+### Changed
+
+- Normalized `ELO` terminology casing to `Elo` across app UI copy, README, changelog copy, and supporting text output
+- Kept internal code symbols and behavior unchanged while making user-facing naming consistent
+
 ## [0.3.2] - 2026-03-17
 
 ### Added
@@ -70,7 +77,7 @@
 
 ### Added
 
-- Current Ratings now includes `ELO Trend (10g)` based on Elo change over each team's last 10 completed games
+- Current Ratings now includes `Elo Trend (10g)` based on Elo change over each team's last 10 completed games
 - Unit tests for Elo trend column behavior across >=10 games, <10 games fallback, and no-games edge cases
 
 ### Changed
@@ -88,7 +95,7 @@
 
 ### Changed
 
-- Base ELO is now fixed to 1000 in the Streamlit app (removed configurable initial ELO control)
+- Base Elo is now fixed to 1000 in the Streamlit app (removed configurable initial Elo control)
 - Interdivision heatmap now displays percentage values directly (0-100%) instead of fractions
 - Home-ice estimate button now updates slider value through safe deferred session-state flow
 

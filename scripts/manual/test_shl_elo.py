@@ -17,10 +17,10 @@ records = league.build_team_records(completed)
 for team_rec in records[:5]:
     team = team_rec['team']
     pts = team_rec['Pts']
-    print(f"{team} - Pts: {pts} - ELO: {ratings[team]:.2f}")
+    print(f"{team} - Pts: {pts} - Elo: {ratings[team]:.2f}")
 
 print("\nBottom 5:")
 for team_rec in records[-5:]:
     team = team_rec['team']
     pts = team_rec['Pts']
-    print(f"{team} - Pts: {pts} - ELO: {ratings[team]:.2f}")
+    print(f"{team} - Pts: {pts} - Elo: {ratings[team]:.2f}")
