@@ -68,44 +68,38 @@ The app updates the slider using the value that best fits observed outcomes.
 
 ## Quickstart
 
-### 1. Create environment and install
+### 1. Install
+
+Requires [uv](https://docs.astral.sh/uv/). This creates `.venv` and installs all dependencies, including dev tools:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 ### 2. Run the dashboard
 
 ```bash
-streamlit run app.py
+uv run streamlit run app.py
 ```
 
 ### 3. Run CLI mode
 
 ```bash
-python cli.py --league NHL --season 20252026 --sims 1000
+uv run python cli.py --league NHL --season 20252026 --sims 1000
 ```
 
 ## Development
 
-Install development dependencies:
-
-```bash
-pip install -r requirements-dev.txt
-```
-
 Run tests:
 
 ```bash
-pytest
+uv run pytest
 ```
 
 Run opt-in network smoke tests:
 
 ```bash
-RUN_NETWORK_TESTS=1 pytest -m network
+RUN_NETWORK_TESTS=1 uv run pytest -m network
 ```
 
 Or use Makefile shortcuts:

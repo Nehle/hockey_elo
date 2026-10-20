@@ -5,9 +5,7 @@ Thanks for your interest in contributing.
 ## Development Setup
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
+uv sync
 ```
 
 ## Running Locally
@@ -15,25 +13,25 @@ pip install -r requirements-dev.txt
 Dashboard:
 
 ```bash
-streamlit run app.py
+uv run streamlit run app.py
 ```
 
 CLI:
 
 ```bash
-python cli.py --league NHL --season 20252026 --sims 200
+uv run python cli.py --league NHL --season 20252026 --sims 200
 ```
 
 ## Tests
 
 ```bash
-pytest
+uv run pytest
 ```
 
 Optional network smoke tests:
 
 ```bash
-RUN_NETWORK_TESTS=1 pytest -m network
+RUN_NETWORK_TESTS=1 uv run pytest -m network
 ```
 
 Convenience target:
@@ -45,8 +43,8 @@ make check
 Manual diagnostics (non-CI scripts):
 
 ```bash
-python scripts/manual/test_shl.py
-python scripts/manual/test_nhl_ari.py
+uv run python scripts/manual/test_shl.py
+uv run python scripts/manual/test_nhl_ari.py
 ```
 
 ## Pull Requests

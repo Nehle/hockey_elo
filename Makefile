@@ -1,23 +1,23 @@
 .PHONY: install install-dev test test-network check run-app run-cli
 
 install:
-	python -m pip install -r requirements.txt
+	uv sync --no-dev
 
 install-dev:
-	python -m pip install -r requirements-dev.txt
+	uv sync
 
 test:
-	pytest
+	uv run pytest
 
 test-network:
-	RUN_NETWORK_TESTS=1 pytest -m network
+	RUN_NETWORK_TESTS=1 uv run pytest -m network
 
 check:
-	python -m compileall -q app.py cli.py src tests scripts
-	pytest
+	uv run python -m compileall -q app.py cli.py src tests scripts
+	uv run pytest
 
 run-app:
-	streamlit run app.py
+	uv run streamlit run app.py
 
 run-cli:
-	python cli.py --league NHL --season 20252026 --sims 1000
+	uv run python cli.py --league NHL --season 20252026 --sims 1000
