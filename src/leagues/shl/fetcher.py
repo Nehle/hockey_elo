@@ -2,11 +2,19 @@ import requests
 import time
 from typing import List, Tuple, Dict
 from src.core.models import GameResult
-from functools import lru_cache
 from src.leagues.shl.constants import ALL_GAME_TYPES, GAME_TYPE_REGULAR_SEASON
 
-@lru_cache(maxsize=1)
+SEASONS_CACHE_TTL_SECONDS = 3600
+_seasons_cache: Tuple[float, Dict[str, str]] = (0.0, {})
+
 def get_shl_seasons() -> Dict[str, str]:
+    # Cache for an hour so long-running app processes pick up new seasons;
+    # the fallback is never cached, so a failed request is retried next time.
+    global _seasons_cache
+    fetched_at, cached = _seasons_cache
+    if cached and time.time() - fetched_at < SEASONS_CACHE_TTL_SECONDS:
+        return cached
+
     url = f"https://www.shl.se/api/sports-v2/season-series-game-types-filter?series=qQ9-bb0bzEWUk&_t={int(time.time())}"
     try:
         resp = requests.get(url, timeout=15)
@@ -24,10 +32,13 @@ def get_shl_seasons() -> Dict[str, str]:
                     break
             if uuid and translation:
                 seasons[translation] = uuid
-        return seasons
+        if seasons:
+            _seasons_cache = (time.time(), seasons)
+            return seasons
     except Exception:
-        # Fallback cache if request fails
-        return {"2025/2026": "xs4m9qupsi", "2024/2025": "qeb-73bZkIm9A"}
+        pass
+    # Fallback if the request fails or returns no seasons
+    return {"2025/2026": "xs4m9qupsi", "2024/2025": "qeb-73bZkIm9A"}
 
 def fetch_shl_games(season_uuid: str = "xs4m9qupsi") -> Tuple[List[GameResult], List[GameResult], List[str], Dict]:
     # Fetch each game type separately so we can tag games as REG vs PLAYOFF
@@ -36,6 +47,10 @@ def fetch_shl_games(season_uuid: str = "xs4m9qupsi") -> Tuple[List[GameResult], 
     for gt in ALL_GAME_TYPES:
         url = f"https://www.shl.se/api/sports-v2/game-schedule?seasonUuid={season_uuid}&seriesUuid=qQ9-bb0bzEWUk&gameTypeUuid={gt}&gamePlace=all&played=all&_t={int(time.time())}"
         resp = requests.get(url, timeout=15)
+        # The API returns 500 for playoff game types that aren't set up yet
+        # (e.g. early in a season), so treat those as having no games.
+        if gt != GAME_TYPE_REGULAR_SEASON and resp.status_code >= 500:
+            continue
         resp.raise_for_status()
         data = resp.json()
         for g in data.get("gameInfo", []):

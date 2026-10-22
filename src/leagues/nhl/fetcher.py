@@ -7,6 +7,19 @@ from .constants import TEAMS
 API_BASE = "https://api-web.nhle.com/v1"
 TIMEOUT = 20
 
+def get_standings_end_date(season: str) -> str:
+    # Latest date with standings for the season; for an ongoing season this is
+    # the most recent game day rather than a date at the end of the season.
+    try:
+        resp = requests.get(f"{API_BASE}/standings-season", timeout=TIMEOUT)
+        resp.raise_for_status()
+        for s in resp.json().get("seasons", []):
+            if str(s.get("id")) == season:
+                return s.get("standingsEnd", "")
+    except Exception:
+        pass
+    return ""
+
 def get_season_teams_and_info(season: str) -> Tuple[List[str], Dict[str, dict]]:
     year = season[4:]
     team_list = []
@@ -14,6 +27,9 @@ def get_season_teams_and_info(season: str) -> Tuple[List[str], Dict[str, dict]]:
     
     # Try a few dates during the season to capture all active teams
     dates_to_try = [f"{year}-04-15", f"{year}-04-01", f"{year}-03-15", f"{year}-03-01", f"{year}-02-15"]
+    standings_end = get_standings_end_date(season)
+    if standings_end:
+        dates_to_try.insert(0, standings_end)
     
     for date_str in dates_to_try:
         url = f"{API_BASE}/standings/{date_str}"

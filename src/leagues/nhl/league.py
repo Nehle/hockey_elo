@@ -1,3 +1,4 @@
+from datetime import date
 from typing import List, Dict, Tuple
 from src.core.league import BaseLeague
 from src.core.models import GameResult, PlayoffSeed
@@ -12,8 +13,11 @@ class NHLLeague(BaseLeague):
 
     def get_available_seasons(self) -> Dict[str, str]:
         # NHL has seasons back to 1917, but we can populate back to 1980
-        # excluding the 2004-2005 lockout season where no games were played
-        return {f"{y}/{y+1}": f"{y}{y+1}" for y in range(2025, 1979, -1) if y != 2004}
+        # excluding the 2004-2005 lockout season where no games were played.
+        # A new season starts in October, so it appears from October 1st onward.
+        today = date.today()
+        latest = today.year if today.month >= 10 else today.year - 1
+        return {f"{y}/{y+1}": f"{y}{y+1}" for y in range(latest, 1979, -1) if y != 2004}
 
     def fetch_games(self, season: str) -> Tuple[List[GameResult], List[GameResult]]:
         completed, remaining, teams, team_info = split_completed_and_remaining_games(season)
